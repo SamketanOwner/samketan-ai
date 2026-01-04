@@ -16,12 +16,12 @@ else:
 with st.sidebar:
     st.header("Samketan Growth Engine")
     st.caption(auth_status)
-    st.info("Mode: Universal Auto-Connect")
+    st.info("Mode: High-Quota Free Tier")
 
 # --- MAIN APP ---
 st.title("🚀 Business Growth Engine")
 
-# --- 2. INPUTS ---
+# --- 2. INPUTS (YOUR 4 QUESTIONS) ---
 col1, col2 = st.columns(2)
 with col1:
     my_product = st.text_input("1) What is your product/service?", placeholder="e.g. Warehouse Storage")
@@ -30,7 +30,7 @@ with col2:
     target_client = st.text_input("2) Who is your client?", placeholder="e.g. Dal Mills")
     scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
 
-# --- 3. THE UNIVERSAL LOGIC ---
+# --- 3. OUTPUT LOGIC (FORCED STABLE FLASH) ---
 if st.button("🚀 Identify Leads"):
     if not api_key:
         st.error("Please provide an API Key.")
@@ -38,74 +38,38 @@ if st.button("🚀 Identify Leads"):
         try:
             genai.configure(api_key=api_key)
             
-            with st.spinner("🔄 Asking Google for available models..."):
+            # FORCING THE STABLE 1.5 FLASH (1500 RPD Free Tier)
+            # This avoids the 'Limit: 0' error on 2.5 Pro
+            model_name = 'gemini-1.5-flash'
+            model = genai.GenerativeModel(model_name)
+            
+            with st.spinner(f"🔎 Using Stable Engine ({model_name})... searching {region}..."):
                 
-                # 1. GET THE ACTUAL LIST FROM GOOGLE
-                my_models = []
-                for m in genai.list_models():
-                    if 'generateContent' in m.supported_generation_methods:
-                        my_models.append(m.name)
+                prompt = f"""
+                Act as a Data Mining Expert.
+                MY PROFILE:
+                - Offering: {my_product}
+                - Client Target: {target_client}
+                - Region: {region}
+                - Scope: {scope}
                 
-                # 2. FILTER: FIND A SAFE MODEL (No "Experimental", No "2.0")
-                chosen_model = None
+                TASK: Find 5 REAL business leads matching this profile.
                 
-                # Priority 1: 1.5 Flash (The Best)
-                for m in my_models:
-                    if "1.5-flash" in m and "exp" not in m and "8b" not in m:
-                        chosen_model = m
-                        break
+                OUTPUT FORMAT:
+                Provide result as a Markdown Table:
+                | Agency Name | Address | Contact Person | Email (Likely) | Phone / WhatsApp |
                 
-                # Priority 2: 1.5 Pro (The Second Best)
-                if not chosen_model:
-                    for m in my_models:
-                        if "1.5-pro" in m and "exp" not in m:
-                            chosen_model = m
-                            break
-
-                # Priority 3: Gemini Pro (The Old Reliable)
-                if not chosen_model:
-                    for m in my_models:
-                        if "gemini-pro" in m:
-                            chosen_model = m
-                            break
-                            
-                # Priority 4: ANYTHING that works
-                if not chosen_model and len(my_models) > 0:
-                    chosen_model = my_models[0]
-
-            if not chosen_model:
-                st.error("❌ Your API Key has ZERO access to any AI models. Please create a new key at aistudio.google.com")
-                st.write("Debug: Found list is empty.")
-            else:
-                # --- RUN SEARCH ---
-                with st.spinner(f"🔎 Connected via {chosen_model}... searching {region}..."):
-                    
-                    model = genai.GenerativeModel(chosen_model)
-                    
-                    prompt = f"""
-                    Act as a Lead Generation Expert.
-                    MY PROFILE:
-                    - Offering: {my_product}
-                    - Client Target: {target_client}
-                    - Region: {region}
-                    - Scope: {scope}
-                    
-                    TASK: Find 5 REAL business leads matching this profile.
-                    
-                    OUTPUT FORMAT:
-                    Provide the result STRICTLY as a Markdown Table with these columns:
-                    | Agency Name | Address | Contact Person | Email (Likely) | Phone / WhatsApp |
-                    
-                    RULES:
-                    1. **Agency Name:** Must be a real business in {region}.
-                    2. **Address:** Be specific (Industrial Area, Road Name).
-                    3. **Email:** If private, use "Not Available" or standard format.
-                    4. **Phone:** Provide public office number or "Check Google Maps".
-                    """
-                    
-                    response = model.generate_content(prompt)
-                    st.success(f"✅ Success! (Engine: {chosen_model})")
-                    st.markdown(response.text)
+                RULES:
+                1. Use real businesses in {region}.
+                2. Be specific with locations.
+                """
+                
+                response = model.generate_content(prompt)
+                st.success(f"✅ Leads Found!")
+                st.markdown(response.text)
 
         except Exception as e:
-            st.error(f"❌ Error: {e}")
+            if "429" in str(e):
+                st.error("❌ Quota Still Blocked. Please wait 60 seconds or generate a NEW Key at aistudio.google.com (it only takes 30 seconds).")
+            else:
+                st.error(f"❌ Error: {e}")
