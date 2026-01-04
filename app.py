@@ -1,54 +1,63 @@
 import streamlit as st
 import google.generativeai as genai
 
-st.set_page_config(page_title="Samketan Agent", page_icon="🚀")
-st.title("🚀 Samketan Agent")
-st.caption("Auto-Detect Mode")
+# --- PAGE SETUP ---
+st.set_page_config(page_title="Samketan Leads", page_icon="🎯")
+
+# --- 1. AUTOMATIC LOGIN (Using Secrets) ---
+# This looks for the key you just saved in Streamlit Settings
+if "GOOGLE_API_KEY" in st.secrets:
+    api_key = st.secrets["GOOGLE_API_KEY"]
+    key_status = "✅ System Linked"
+else:
+    # Fallback if you haven't saved secrets yet
+    api_key = st.sidebar.text_input("Enter API Key", type="password")
+    key_status = "⚠️ Key Missing"
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.header("⚙️ Setup")
-    api_key = st.text_input("Paste Google API Key", type="password").strip()
-    st.info("Paste key to auto-detect models.")
+    st.header("Samketan 2.0")
+    st.info(key_status)
+    if "✅" in key_status:
+        st.success("Auto-Login Active")
 
 # --- INPUTS ---
-domain = st.selectbox("Category", ["Warehouse", "Software", "Food", "Export"])
-region = st.text_input("Region", "Gulbarga, Karnataka")
+st.title("🎯 Direct Lead Finder")
+col1, col2 = st.columns(2)
+with col1:
+    domain = st.selectbox("Industry", ["Warehouse", "Software", "Food/Grains", "Construction", "Export"])
+with col2:
+    region = st.text_input("City/Region", "Gulbarga (Kalaburagi)")
 
-# --- SMART LOGIC ---
-if st.button("🚀 Find Leads"):
+# --- THE AGGRESSIVE PROMPT ---
+if st.button("Get Company Names"):
     if not api_key:
-        st.error("Please enter API Key")
+        st.error("Please set the API Key in Streamlit Secrets first!")
     else:
         try:
             genai.configure(api_key=api_key)
+            # Auto-detect model (Flash is faster for lists)
+            model = genai.GenerativeModel('gemini-1.5-flash')
             
-            with st.spinner("🔍 Scanning for available AI models..."):
-                # 1. Ask Google what models are available for this Key
-                working_model = None
-                available = []
+            with st.spinner("🔍 Scanning for REAL business names..."):
                 
-                # List all models
-                for m in genai.list_models():
-                    if 'generateContent' in m.supported_generation_methods:
-                        available.append(m.name)
+                # We force the AI to give names, not advice
+                prompt = f"""
+                TASK: List 3 REAL, EXISTING Business Names in {region} that match the category '{domain}'.
                 
-                # 2. Check if we found any
-                if not available:
-                    st.error("❌ Your API Key works, but it has NO access to any AI models.")
-                    st.error("👉 Solution: Go to 'aistudio.google.com' and create a NEW free API key.")
-                    st.stop()
-                else:
-                    # 3. Pick the first one that works (e.g., models/gemini-1.5-flash)
-                    working_model = available[0]
-                    st.success(f"✅ Connected to: {working_model}")
-            
-            # 4. Run the Search using the detected model
-            with st.spinner(f"🤖 Thinking..."):
-                model = genai.GenerativeModel(working_model)
-                response = model.generate_content(f"Find 3 business leads for {domain} in {region}.")
-                st.markdown("---")
-                st.write(response.text)
+                NO ADVICE. NO PREACHING. ONLY DATA.
+                
+                Strict Output Format:
+                1. **[Company Name]**
+                   - *Type:* (e.g. Wholesaler / Manufacturer)
+                   - *Likely Needs:* (1 sentence why they need {domain} services)
+                
+                If exact names are hard to confirm, list the top 3 biggest local players in this sector.
+                """
+                
+                response = model.generate_content(prompt)
+                st.markdown(response.text)
+                st.warning("ℹ️ Note: Verify these local businesses on Google Maps before calling.")
                 
         except Exception as e:
-            st.error(f"❌ Connection Error: {e}")
+            st.error(f"Error: {e}")
