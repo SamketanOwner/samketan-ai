@@ -16,13 +16,13 @@ else:
 with st.sidebar:
     st.header("Samketan Growth Engine")
     st.caption(auth_status)
-    st.info("Mode: Strategic Table Search")
+    st.info("Mode: Stable Table Search")
 
 # --- MAIN APP ---
 st.title("🚀 Business Growth Engine")
 st.markdown("Define your strategy below to find the perfect leads.")
 
-# --- 2. YOUR 4 INPUTS (Preserved) ---
+# --- 2. INPUTS (YOUR 4 QUESTIONS) ---
 col1, col2 = st.columns(2)
 
 with col1:
@@ -37,7 +37,7 @@ with col2:
     # Q4: Scope
     scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
 
-# --- 3. OUTPUT LOGIC (Table Format + Error Fix) ---
+# --- 3. OUTPUT LOGIC ---
 if st.button("🚀 Identify Leads"):
     if not api_key:
         st.error("Please provide an API Key.")
@@ -45,13 +45,14 @@ if st.button("🚀 Identify Leads"):
         try:
             genai.configure(api_key=api_key)
             
-            # FIX: Force the 1.5 Flash model (1,500 free searches/day)
-            # This prevents the '429 Quota Exceeded' error
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            # --- FIX: USE THE 'PRO' MODEL ---
+            # 'gemini-pro' is the most stable version globally.
+            # It avoids the 404 error of Flash and the Quota error of 2.5.
+            model = genai.GenerativeModel('gemini-pro')
             
             with st.spinner(f"🔎 Analyzing {scope} market in {region} for {target_client}..."):
                 
-                # PROMPT: Uses your 4 inputs but forces Table Output
+                # PROMPT: Forces Table Output
                 prompt = f"""
                 Act as a Data Mining Expert.
                 
@@ -79,4 +80,4 @@ if st.button("🚀 Identify Leads"):
                 st.success("✅ Table Generated Successfully")
 
         except Exception as e:
-            st.error(f"❌ Error: {e}")
+            st.error(f"❌ Connection Error: {e}")
