@@ -2,7 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 
 # --- PAGE CONFIG ---
-st.set_page_config(page_title="Samketan Growth Engine", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Samketan Growth Engine", page_icon="📈", layout="wide")
 
 # --- 1. LOGIN LOGIC ---
 if "GOOGLE_API_KEY" in st.secrets:
@@ -16,48 +16,52 @@ else:
 with st.sidebar:
     st.header("Samketan Growth Engine")
     st.caption(auth_status)
-    st.info("Mode: Table Output")
+    st.info("Mode: Strategic Table Search")
 
 # --- MAIN APP ---
-st.title("🚀 Lead Generation Table")
-st.markdown("Generate a structured list of potential clients.")
+st.title("🚀 Business Growth Engine")
+st.markdown("Define your strategy below to find the perfect leads.")
 
-# --- 2. INPUTS ---
-col1, col2, col3 = st.columns(3)
+# --- 2. YOUR 4 INPUTS (Preserved) ---
+col1, col2 = st.columns(2)
 
 with col1:
-    my_product = st.text_input("1) What do you sell?", "Warehouse Storage Space")
-with col2:
-    target_client = st.text_input("2) Who is the client?", "Dal Mills & Pulses Traders")
-with col3:
-    region = st.text_input("3) Region?", "Gulbarga")
+    # Q1: Your Product
+    my_product = st.text_input("1) What is your product/service?", placeholder="e.g. Warehouse Storage")
+    # Q3: Region
+    region = st.text_input("3) Target Region?", "Gulbarga")
 
-# --- 3. OUTPUT LOGIC ---
-if st.button("🚀 Generate Table"):
+with col2:
+    # Q2: Target Client
+    target_client = st.text_input("2) Who is your client?", placeholder="e.g. Dal Mills")
+    # Q4: Scope
+    scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
+
+# --- 3. OUTPUT LOGIC (Table Format + Error Fix) ---
+if st.button("🚀 Identify Leads"):
     if not api_key:
         st.error("Please provide an API Key.")
     else:
         try:
             genai.configure(api_key=api_key)
             
-            # Auto-Detect Model
-            valid_model = None
-            for m in genai.list_models():
-                if 'generateContent' in m.supported_generation_methods:
-                    if 'flash' in m.name:
-                        valid_model = m.name
-                        break
-            if not valid_model: valid_model = 'models/gemini-1.5-flash'
-
-            with st.spinner(f"📊 Creating contact table for {target_client} in {region}..."):
-                model = genai.GenerativeModel(valid_model)
+            # FIX: Force the 1.5 Flash model (1,500 free searches/day)
+            # This prevents the '429 Quota Exceeded' error
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            with st.spinner(f"🔎 Analyzing {scope} market in {region} for {target_client}..."):
                 
-                # PROMPT: Forces Table Format
+                # PROMPT: Uses your 4 inputs but forces Table Output
                 prompt = f"""
                 Act as a Data Mining Expert.
                 
-                TASK: Find 5 REAL business leads in {region} matching the profile: '{target_client}'.
-                GOAL: To sell them '{my_product}'.
+                MY PROFILE:
+                - Offering: {my_product}
+                - Client Target: {target_client}
+                - Region: {region}
+                - Scope: {scope}
+                
+                TASK: Find 5 REAL business leads matching this profile.
                 
                 OUTPUT FORMAT:
                 Provide the result STRICTLY as a Markdown Table with these columns:
@@ -65,10 +69,9 @@ if st.button("🚀 Generate Table"):
                 
                 RULES:
                 1. **Agency Name:** Must be a real business in {region}.
-                2. **Address:** Be as specific as possible (Industrial Area, Road Name).
-                3. **Email:** If specific email is hidden, provide a standard format (e.g., info@company.com) or "Not Available".
-                4. **Phone/WhatsApp:** Provide the public office number or "Check Google Maps" if private. Do NOT invent fake numbers.
-                
+                2. **Address:** Be specific (Industrial Area, Road Name).
+                3. **Email:** If private, use "Not Available" or standard format info@...
+                4. **Phone:** Provide public office number or "Check Google Maps".
                 """
                 
                 response = model.generate_content(prompt)
