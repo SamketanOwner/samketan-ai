@@ -2,10 +2,10 @@ import streamlit as st
 import requests
 import json
 
-# --- PAGE SETUP ---
+# --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Samketan Agent", page_icon="🚀", layout="centered")
 
-# --- LOGIN SYSTEM ---
+# --- LOGIN ---
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
@@ -23,71 +23,50 @@ if not st.session_state.logged_in:
     login()
     st.stop()
 
-# --- THE APP INTERFACE ---
+# --- APP INTERFACE ---
 st.title("🚀 Samketan Agent")
-st.markdown("### Intelligent Lead Discovery Engine")
+st.caption("Standard AI Model (gemini-pro)")
 
 # --- SIDEBAR (API KEY) ---
 with st.sidebar:
-    st.header("⚙️ Brain Power")
+    st.header("⚙️ Settings")
     api_key = st.text_input("Paste Google API Key", type="password")
-    st.caption("Paste your 'AIza...' key here.")
-    st.info("⚡ Lightweight Mode Active")
-
-# --- MAIN INPUTS ---
+    
+# --- INPUTS ---
 col1, col2 = st.columns(2)
 with col1:
-    domain = st.selectbox("Target Category", 
-        ["Software Buyers", "Warehouse Clients", "Art/Statue Resellers", "Food/Grain Wholesalers", "Export Agencies"])
+    domain = st.selectbox("Target Category", ["Warehouse Clients", "Software", "Food/Grain", "Export"])
 with col2:
-    region = st.text_input("Target Region", "Gulbarga, Karnataka")
+    region = st.text_input("Region", "Gulbarga, Karnataka")
 
-details = st.text_area("Specific Filters", "Looking for verified contacts...")
+details = st.text_area("Details", "Looking for verified contacts...")
 
-# --- THE LIGHTWEIGHT BRAIN LOGIC ---
-if st.button("🚀 Find Verified Leads"):
+# --- THE LOGIC (UPDATED MODEL) ---
+if st.button("🚀 Find Leads"):
     if not api_key:
-        st.error("⛔ Please paste your Google API Key in the sidebar first!")
+        st.error("Please paste your API Key first.")
     else:
-        with st.spinner(f"🤖 Samketan is contacting Google directly..."):
+        with st.spinner("🤖 Analyzing with Standard AI..."):
             
-            # 1. Prepare the Prompt
-            prompt_text = f"""
-            Act as Samketan, a Lead Generation Expert.
-            TASK: Find 3 highly relevant business leads for:
-            - Domain: {domain}
-            - Region: {region}
-            - Context: {details}
-
-            STRICT RULES:
-            1. If 'Software': Find IT Heads/Purchase Managers.
-            2. If 'Warehouse': Find Logistics Managers.
-            3. If 'Food': Find Wholesalers.
+            # UPDATED: Using 'gemini-pro' which is 100% stable
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
             
-            OUTPUT FORMAT:
-            For each lead provide: Business Name, Why them?, and a Draft Email Pitch.
-            """
-
-            # 2. Send Data Directly to Google (No Library Needed)
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
             headers = {"Content-Type": "application/json"}
-            data = {
-                "contents": [{
-                    "parts": [{"text": prompt_text}]
-                }]
-            }
+            
+            prompt_text = f"Find 3 business leads for {domain} in {region}. Context: {details}. Return Business Name, Why, and Email Pitch."
+            
+            data = { "contents": [{ "parts": [{"text": prompt_text}] }] }
 
             try:
                 response = requests.post(url, headers=headers, json=data)
                 
                 if response.status_code == 200:
-                    result = response.json()
-                    # Extract text from Google's complex JSON
-                    answer = result['candidates'][0]['content']['parts'][0]['text']
-                    st.success("✅ Analysis Complete")
+                    answer = response.json()['candidates'][0]['content']['parts'][0]['text']
+                    st.success("✅ Success!")
                     st.markdown(answer)
                 else:
-                    st.error(f"❌ Error {response.status_code}: {response.text}")
+                    st.error(f"❌ Error: {response.status_code}")
+                    st.write(response.text)
 
             except Exception as e:
-                st.error(f"❌ Connection Error: {e}")
+                st.error(f"Connection Error: {e}")
