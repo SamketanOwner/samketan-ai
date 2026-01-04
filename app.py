@@ -1,5 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
+import time
 
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="Samketan Growth Engine", page_icon="📈", layout="wide")
@@ -16,7 +17,7 @@ else:
 with st.sidebar:
     st.header("Samketan Growth Engine")
     st.caption(auth_status)
-    st.info("Mode: Smart Auto-Select")
+    st.info("Mode: Stable Connection")
 
 # --- MAIN APP ---
 st.title("🚀 Business Growth Engine")
@@ -33,50 +34,43 @@ with col2:
     target_client = st.text_input("2) Who is your client?", placeholder="e.g. Dal Mills")
     scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
 
-# --- 3. OUTPUT LOGIC (SMART SELECTOR) ---
+# --- 3. OUTPUT LOGIC (BRUTE FORCE SELECTOR) ---
 if st.button("🚀 Identify Leads"):
     if not api_key:
         st.error("Please provide an API Key.")
     else:
-        try:
-            genai.configure(api_key=api_key)
-            
-            with st.spinner("🔄 Finding the best available AI model..."):
-                # --- SMART MODEL SELECTOR ---
-                chosen_model = None
-                available_models = []
-                
-                # 1. Get ALL models your key can see
-                for m in genai.list_models():
-                    if 'generateContent' in m.supported_generation_methods:
-                        available_models.append(m.name)
-                
-                # 2. Filter logic: Avoid '2.5' (Quota limits) and prefer '1.5' (Stable)
-                for name in available_models:
-                    if "2.5" in name: 
-                        continue # Skip the low-quota model
-                    if "1.5-flash" in name:
-                        chosen_model = name
-                        break # Found the best one!
-                
-                # 3. Fallback: If no 1.5 flash, take the first valid one that isn't 2.5
-                if not chosen_model:
-                    for name in available_models:
-                         if "2.5" not in name:
-                             chosen_model = name
-                             break
-                
-                # 4. Final Safety: If ONLY 2.5 exists, use it and warn user
-                if not chosen_model and available_models:
-                    chosen_model = available_models[0]
-            
-            if not chosen_model:
-                st.error("❌ Fatal Error: Your API Key has NO access to any models. Please generate a new key at aistudio.google.com")
-            else:
-                # --- RUN THE SEARCH ---
-                with st.spinner(f"🔎 Analyzing {scope} market in {region} using {chosen_model}..."):
+        # Define the Safe List (No experimental models)
+        safe_models = [
+            "gemini-1.5-flash", 
+            "gemini-1.5-flash-latest", 
+            "gemini-1.5-flash-001",
+            "gemini-1.5-pro",
+            "gemini-pro"
+        ]
+        
+        working_model = None
+        genai.configure(api_key=api_key)
+
+        # --- FIND A WORKING MODEL ---
+        with st.spinner("🔌 Testing connections to find a stable model..."):
+            for model_name in safe_models:
+                try:
+                    # Quick test to see if this model exists for your key
+                    test_model = genai.GenerativeModel(model_name)
+                    # We just test if it initializes, not running a query yet to save time
+                    working_model = model_name
+                    break # Found one! Stop looking.
+                except:
+                    continue
+        
+        if not working_model:
+            st.error("❌ Critical Error: Your API Key is blocked from all standard models. Please create a NEW key at aistudio.google.com")
+        else:
+            # --- RUN THE REAL SEARCH ---
+            try:
+                with st.spinner(f"🔎 Analyzing {scope} market in {region} using {working_model}..."):
                     
-                    model = genai.GenerativeModel(chosen_model)
+                    model = genai.GenerativeModel(working_model)
                     
                     prompt = f"""
                     Act as a Data Mining Expert.
@@ -101,9 +95,8 @@ if st.button("🚀 Identify Leads"):
                     """
                     
                     response = model.generate_content(prompt)
-                    st.markdown(f"**Connected to:** `{chosen_model}`") # Shows you which one worked
+                    st.success(f"✅ Success! Connected via: {working_model}")
                     st.markdown(response.text)
-                    st.success("✅ Table Generated Successfully")
-
-        except Exception as e:
-            st.error(f"❌ Error: {e}")
+                    
+            except Exception as e:
+                st.error(f"❌ Error during search: {e}")
