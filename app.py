@@ -1,72 +1,55 @@
 import streamlit as st
-import requests
-import json
+import google.generativeai as genai
+import os
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(page_title="Samketan Agent", page_icon="🚀", layout="centered")
 
-# --- LOGIN ---
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-def login():
-    st.title("🔒 Samketan Login")
-    password = st.text_input("Enter Password", type="password")
-    if st.button("Unlock System"):
-        if password == "Samketan2026": 
-            st.session_state.logged_in = True
-            st.rerun()
-        else:
-            st.error("Incorrect Password")
-
-if not st.session_state.logged_in:
-    login()
-    st.stop()
-
-# --- APP INTERFACE ---
+# --- HEADER ---
 st.title("🚀 Samketan Agent")
-st.caption("Standard AI Model (gemini-pro)")
+st.caption("Powered by Google Gemini 1.5 Flash")
 
-# --- SIDEBAR (API KEY) ---
+# --- SIDEBAR ---
 with st.sidebar:
-    st.header("⚙️ Settings")
-    api_key = st.text_input("Paste Google API Key", type="password")
-    
+    st.header("⚙️ Brain Power")
+    # We use .strip() to remove any accidental spaces you might copy
+    api_key = st.text_input("Paste Google API Key", type="password").strip()
+    st.info("ℹ️ First search may take 2-3 mins (Booting up).")
+
 # --- INPUTS ---
 col1, col2 = st.columns(2)
 with col1:
-    domain = st.selectbox("Target Category", ["Warehouse Clients", "Software", "Food/Grain", "Export"])
+    domain = st.selectbox("Target Category", 
+        ["Warehouse Clients", "Software", "Food/Grain", "Export"])
 with col2:
     region = st.text_input("Region", "Gulbarga, Karnataka")
 
 details = st.text_area("Details", "Looking for verified contacts...")
 
-# --- THE LOGIC (UPDATED MODEL) ---
+# --- THE OFFICIAL BRAIN LOGIC ---
 if st.button("🚀 Find Leads"):
     if not api_key:
-        st.error("Please paste your API Key first.")
+        st.error("⛔ Please paste your Google API Key in the sidebar.")
     else:
-        with st.spinner("🤖 Analyzing with Standard AI..."):
+        try:
+            # Configure Google Brain
+            genai.configure(api_key=api_key)
             
-            # UPDATED: Using 'gemini-pro' which is 100% stable
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
+            # We use the newest stable model
+            model = genai.GenerativeModel('gemini-1.5-flash')
             
-            headers = {"Content-Type": "application/json"}
-            
-            prompt_text = f"Find 3 business leads for {domain} in {region}. Context: {details}. Return Business Name, Why, and Email Pitch."
-            
-            data = { "contents": [{ "parts": [{"text": prompt_text}] }] }
-
-            try:
-                response = requests.post(url, headers=headers, json=data)
+            with st.spinner("🤖 Samketan is thinking... (If first time, please wait 2 mins)"):
                 
-                if response.status_code == 200:
-                    answer = response.json()['candidates'][0]['content']['parts'][0]['text']
-                    st.success("✅ Success!")
-                    st.markdown(answer)
-                else:
-                    st.error(f"❌ Error: {response.status_code}")
-                    st.write(response.text)
-
-            except Exception as e:
-                st.error(f"Connection Error: {e}")
+                prompt = f"""
+                Find 3 business leads for {domain} in {region}.
+                Context: {details}
+                Return: Business Name, Why matches, and Draft Email Pitch.
+                """
+                
+                response = model.generate_content(prompt)
+                
+                st.success("✅ Analysis Complete!")
+                st.markdown(response.text)
+                
+        except Exception as e:
+            st.error(f"❌ Error: {e}")
