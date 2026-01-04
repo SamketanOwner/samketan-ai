@@ -4,7 +4,7 @@ import google.generativeai as genai
 # --- PAGE CONFIG ---
 st.set_page_config(page_title="Samketan Leads", page_icon="🏢")
 
-# --- 1. LOGIN LOGIC (Secrets + Fallback) ---
+# --- 1. LOGIN LOGIC (KEPT EXACTLY AS REQUESTED) ---
 if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"]
     auth_status = "✅ Auto-Logged In"
@@ -14,66 +14,69 @@ else:
 
 # --- SIDEBAR ---
 with st.sidebar:
-    st.header("Samketan 3.0")
+    st.header("Samketan 4.0")
     st.caption(auth_status)
-    st.info("Mode: Real Business Search")
+    st.info("Mode: Custom Search")
 
 # --- MAIN APP ---
-st.title("🏢 Warehouse Lead Finder")
+st.title("🎯 Custom Lead Finder")
+st.markdown("Type exactly what you are looking for.")
+
+# --- 2. NEW INPUTS (More Freedom) ---
 col1, col2 = st.columns(2)
 with col1:
-    domain = st.selectbox("Looking For", ["Warehouse Clients", "Software Buyers", "Food/Grain Wholesalers", "Construction Material"])
+    # Changed from Dropdown to Text Input -> Type ANYTHING
+    target_business = st.text_input("Who are you looking for?", placeholder="e.g. Cotton Mills, Dal Mills, Hospitals")
 with col2:
-    region = st.text_input("Region/City", "Gulbarga (Kalaburagi)")
+    region = st.text_input("Region/City", "Gulbarga")
 
-# --- THE SMART LOGIC ---
-if st.button("Get Business Names"):
+# Optional: Add a specific requirement to filter results
+specific_need = st.text_input("Specific Requirement (Optional)", placeholder="e.g. Must have a warehouse, Must be a wholesaler")
+
+# --- 3. NEW OUTPUT LOGIC ---
+if st.button("Find Leads"):
     if not api_key:
-        st.error("Please provide an API Key (in Sidebar or Secrets).")
+        st.error("Please provide an API Key.")
     else:
         try:
             genai.configure(api_key=api_key)
             
-            with st.spinner("🔄 Finding the best AI model for you..."):
-                # 1. AUTO-DETECT: Find the first model that actually works
-                valid_model = None
-                for m in genai.list_models():
-                    if 'generateContent' in m.supported_generation_methods:
-                        if 'flash' in m.name or 'pro' in m.name: # Prefer Flash or Pro
-                            valid_model = m.name
-                            break
-                
-                # If no specific one found, grab the very first available one
-                if not valid_model:
-                     for m in genai.list_models():
-                        if 'generateContent' in m.supported_generation_methods:
-                            valid_model = m.name
-                            break
+            # Auto-Detect Model (Kept same as before to ensure connection)
+            valid_model = None
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    if 'flash' in m.name:
+                        valid_model = m.name
+                        break
+            if not valid_model: valid_model = 'models/gemini-1.5-flash' # Fallback
 
-            if not valid_model:
-                st.error("❌ No AI models available for this API Key. Please create a new key.")
-            else:
-                # 2. RUN THE AGGRESSIVE SEARCH
-                with st.spinner(f"🔎 Searching {region} using {valid_model}..."):
-                    model = genai.GenerativeModel(valid_model)
-                    
-                    prompt = f"""
-                    TASK: List 3 REAL, EXISTING Business Names in {region} that are likely to be {domain}.
-                    
-                    STRICT RULES:
-                    - NO generic advice (e.g., "Look for dal mills").
-                    - GIVE SPECIFIC NAMES (e.g., "Maruti Udyog", "XYZ Traders").
-                    - If exact names are private, list the Specific Industrial Areas where they are located.
-                    
-                    OUTPUT FORMAT:
-                    1. **[Business Name]**
-                       - *Location:* [Area Name]
-                       - *Why:* [Short reason]
-                    """
-                    
-                    response = model.generate_content(prompt)
-                    st.success(f"✅ Found Leads using {valid_model}")
-                    st.markdown(response.text)
+            with st.spinner(f"🔎 Scanning {region} for '{target_business}'..."):
+                model = genai.GenerativeModel(valid_model)
+                
+                # REFINED PROMPT: Asking for a list format
+                prompt = f"""
+                Act as a B2B Lead Generator.
+                
+                TASK: Find 5 REAL, SPECIFIC business leads in {region} that match: '{target_business}'.
+                Context: {specific_need}
+                
+                OUTPUT RULES:
+                - Do NOT give general advice.
+                - List specific business names.
+                - If exact contact info is private, mention the AREA/LOCALITY where they are located.
+                
+                FORMAT FOR EACH LEAD:
+                -----------------------
+                🏢 **[Business Name]**
+                📍 **Location:** [Specific Area/Road in {region}]
+                💼 **Business Type:** [Wholesaler/Manufacturer/Retailer]
+                💡 **Why Pitch Them:** [1 sentence strategy]
+                -----------------------
+                """
+                
+                response = model.generate_content(prompt)
+                st.markdown(response.text)
+                st.success("✅ Search Complete")
 
         except Exception as e:
-            st.error(f"❌ Connection Failed: {e}")
+            st.error(f"❌ Error: {e}")
