@@ -5,15 +5,14 @@ import google.generativeai as genai
 import urllib.parse
 import json
 
-# --- REFINED FIREBASE INITIALIZATION ---
+# --- SIMPLIFIED FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
     try:
-        # 1. Load the dictionary from secrets
+        # Load secrets as a dictionary
         fb_dict = dict(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
         
-        # 2. THE FIX: Convert literal \n into real newlines
-        if "private_key" in fb_dict:
-            fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+        # We REMOVED the .replace line because the triple quotes 
+        # in the secrets box now handle the formatting for us.
             
         cred = credentials.Certificate(fb_dict)
         firebase_admin.initialize_app(cred)
