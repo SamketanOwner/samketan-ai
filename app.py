@@ -1,30 +1,6 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import auth, credentials
-import re
-
-# --- UNIVERSAL CLEANER FIREBASE INITIALIZATION ---
-if not firebase_admin._apps:
-    try:
-        fb_dict = dict(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
-        
-        # 1. Get the raw key
-        key = fb_dict["private_key"]
-        
-        # 2. STRIP ALL ILLEGAL BYTES (Fixes InvalidByte error)
-        # This removes any hidden characters that aren't standard letters/numbers/symbols
-        clean_key = "".join(char for char in key if ord(char) < 128)
-        
-        # 3. Fix the Newlines
-        fb_dict["private_key"] = clean_key.replace("\\n", "\n")
-            
-        cred = credentials.Certificate(fb_dict)
-        firebase_admin.initialize_app(cred)
-    except Exception as e:
-        st.error(f"⚠️ Firebase Identity Gate Error: {e}")
-        st.stop()import streamlit as st
-import firebase_admin
-from firebase_admin import auth, credentials
 import google.generativeai as genai
 import urllib.parse
 import json
@@ -32,25 +8,26 @@ import json
 # --- 1. PAGE SETUP (MUST BE FIRST) ---
 st.set_page_config(page_title="Samketan Business Growth Engine", page_icon="📈", layout="wide")
 
-# --- 2. FIREBASE INITIALIZATION (SECURITY GATE) ---
+# --- 2. FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
     try:
         fb_dict = dict(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
-        # This fix removes the "Invalid Padding" error by cleaning the key
-        if "private_key" in fb_dict:
-            fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+        # Clean the key to fix "InvalidByte" and "Padding" errors
+        raw_key = fb_dict["private_key"]
+        clean_key = "".join(char for char in raw_key if ord(char) < 128)
+        fb_dict["private_key"] = clean_key.replace("\\n", "\n")
             
         cred = credentials.Certificate(fb_dict)
         firebase_admin.initialize_app(cred)
     except Exception as e:
-        st.error(f"⚠️ Firebase Setup Error: {e}")
+        st.error(f"⚠️ Firebase Identity Gate Error: {e}")
         st.stop()
 
 # --- 3. LOGIN SESSION STATE ---
 if 'authenticated' not in st.session_state:
     st.session_state['authenticated'] = False
 
-# --- 4. THE LOGIN "GATE" (ONLY CHANGE REQUESTED) ---
+# --- 4. THE LOGIN GATE (THE FRONT DOOR) ---
 if not st.session_state['authenticated']:
     st.header("🔐 Samketan Business Growth Engine")
     st.write("Please verify your identity to continue.")
@@ -75,14 +52,13 @@ if not st.session_state['authenticated']:
                 st.success("Account created! Now click 'Log In'.")
             except Exception as e:
                 st.error(f"Sign up error: {e}")
-    st.stop() # LOCK: Prevents the rest of the app from showing until logged in
+    st.stop() 
 
-# --- 5. YOUR EXISTING PATTERN (UNCHANGED AS REQUESTED) ---
+# --- 5. YOUR EXISTING PATTERN (UNCHANGED) ---
 
-# Get Gemini API Key
+# Get API Key from Secrets
 api_key = st.secrets.get("GOOGLE_API_KEY", "")
 
-# SIDEBAR
 with st.sidebar:
     st.header("🏢 Your Company Profile")
     st.write(f"Verified: **{st.session_state['user_email']}**")
@@ -90,13 +66,12 @@ with st.sidebar:
     my_company_desc = st.text_area("Describe your company & services", 
         value="", 
         placeholder="e.g., Samketan: We provide high-end Warehouse Storage solutions...",
-        help="The AI will use this to write the professional email and WhatsApp pitch.")
+        help="The AI will use this to write the professional pitch.")
     
     if st.button("Logout"):
         st.session_state['authenticated'] = False
         st.rerun()
 
-# HEADER
 st.header("🚀 Samketan Business Growth Engine")
 
 # THE 4 QUESTIONS
@@ -108,7 +83,7 @@ with col2:
     target_client = st.text_input("2) Who is your client?", value="", placeholder="e.g., Dal Mills")
     scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
 
-# THE DATA ENGINE (REMAINING PATTERN)
+# THE DATA ENGINE
 if st.button("🚀 Generate 10 Pro Leads"):
     if not api_key:
         st.error("Please provide an API Key.")
@@ -119,7 +94,7 @@ if st.button("🚀 Generate 10 Pro Leads"):
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel('gemini-2.5-flash')
 
-            with st.spinner("🔍 Mining 10 leads with deep contact info and direct links..."):
+            with st.spinner("🔍 Mining 10 leads with deep contact info..."):
                 prompt = f"""
                 Act as a B2B Lead Generation Expert. Find 10 REAL and ACTIVE businesses in {region} for {target_client}.
                 They must be potential buyers for {my_product}.
@@ -144,9 +119,9 @@ if st.button("🚀 Generate 10 Pro Leads"):
                         cols = [c.strip() for c in line.split('|') if c.strip()]
                         if len(cols) < 7: continue
                         
-                        if i == 0 or "Agency Name" in line: # Header
+                        if i == 0 or "Agency Name" in line:
                             html_table += "<tr>" + "".join([f"<th style='border: 1px solid #ddd; padding: 10px; background-color: #f8f9fa;'>{c}</th>" for c in cols]) + "</tr>"
-                        else: # Data Rows
+                        else:
                             name, addr, web, email, phone, link, person = cols[0], cols[1], cols[2], cols[3], cols[4], cols[5], cols[6]
                             
                             web_click = web if web.startswith("http") else f"http://{web}"
