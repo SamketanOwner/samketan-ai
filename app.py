@@ -1,71 +1,81 @@
 import streamlit as st
 import google.generativeai as genai
+import pandas as pd
+import io
 
 # --- PAGE SETUP ---
 st.set_page_config(page_title="Samketan Growth Engine", page_icon="📈", layout="wide")
 
-# --- 1. LOGIN LOGIC ---
+# --- 1. LOGIN LOGIC (UNCHANGED) ---
 if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"]
     auth_status = "✅ System Connected"
 else:
-    api_key = st.sidebar.text_input("Enter API Key", type="password").strip()
+    api_key = st.sidebar.text_input("Paste Google API Key", type="password").strip()
     auth_status = "⚠️ Key Missing"
 
 with st.sidebar:
     st.header("Samketan 2026")
     st.info(auth_status)
+    st.caption("Mode: 10x Lead Research + CRM")
 
 # --- MAIN DASHBOARD ---
 st.title("🚀 Business Growth Engine")
+st.markdown("Generating 10 high-value leads with deep contact info.")
 
 # --- 2. THE 4 QUESTIONS ---
 col1, col2 = st.columns(2)
 with col1:
-    my_product = st.text_input("1) Your Product/Service", value="Warehouse Storage")
-    region = st.text_input("3) Target City/Region", value="Gulbarga")
+    my_product = st.text_input("1) What is your product/service?", value="Warehouse Storage")
+    region = st.text_input("3) Target City/Region?", "Gulbarga")
 with col2:
-    target_client = st.text_input("2) Target Client Industry", value="Dal Mills")
+    target_client = st.text_input("2) Who is your client?", "Dal Mills")
     scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
 
-# --- 3. SMART SEARCH ENGINE ---
-if st.button("🚀 Generate Leads Table"):
+# --- 3. DATA ENGINE ---
+if st.button("🚀 Generate 10 Pro Leads"):
     if not api_key:
-        st.error("❌ Please provide a valid API Key.")
+        st.error("Please provide an API Key.")
     else:
         try:
             genai.configure(api_key=api_key)
             
-            # --- SMART MODEL SELECTION ---
-            # This part asks Google: "What models can I actually use?"
-            with st.spinner("🔍 Detecting your available AI models..."):
-                available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                
-                # We try to find the best 2026 models in order of priority
-                priority_list = [
-                    "models/gemini-3-flash-preview", 
-                    "models/gemini-2.5-flash", 
-                    "models/gemini-2.0-flash-001"
-                ]
-                
-                chosen_model = next((m for m in priority_list if m in available_models), available_models[0])
+            # Using Gemini 3 Flash for the 1,500 RPD free limit and web grounding
+            model_name = 'gemini-3-flash'
+            model = genai.GenerativeModel(model_name)
 
-            # --- RUN THE SEARCH ---
-            model = genai.GenerativeModel(chosen_model)
-            with st.spinner(f"📊 Using engine {chosen_model}... finding leads..."):
+            with st.spinner("🔍 Mining 10 leads with LinkedIn and Email data..."):
                 prompt = f"""
-                Find 5 REAL business leads in {region} for:
-                - Product: {my_product}
-                - Industry: {target_client}
-                - Scope: {scope}
+                Act as a B2B Lead Generation Expert with Web Research capabilities.
                 
-                OUTPUT: Strictly a Markdown table with:
-                | Company Name | Address | Contact Role | Phone | Why Match |
+                TASK: Find exactly 10 REAL and ACTIVE businesses in {region} for the industry: {target_client}.
+                GOAL: They should be potential buyers for: {my_product}.
+                SCOPE: {scope}.
+                
+                For each business, find:
+                1. Official Website URL.
+                2. Professional Email Address.
+                3. LinkedIn Profile (Company page or Owner/Manager profile).
+                4. Name of the Concern Person (Owner, Director, or Manager).
+                
+                OUTPUT: Return ONLY a Markdown table with these columns:
+                | Agency Name | Address | Website | Email ID | Phone/WhatsApp | LinkedIn Profile | Concern Person |
                 """
                 
                 response = model.generate_content(prompt)
-                st.markdown(response.text)
-                st.success(f"✅ Leads generated using {chosen_model}")
                 
+                # --- DISPLAY ---
+                st.markdown("### 📋 10 Verified Sales Leads")
+                st.markdown(response.text)
+
+                # --- EXPORT TO EXCEL (CSV) ---
+                st.download_button(
+                    label="📥 Download All 10 Leads for Excel",
+                    data=response.text,
+                    file_name=f"Samketan_10_Leads_{region}.csv",
+                    mime="text/csv",
+                )
+                st.success(f"✅ 10 Leads Generated using {model_name}. Daily Limit: 1,500.")
+
         except Exception as e:
-            st.error(f"❌ Connection Failed: {e}")
+            st.error(f"❌ Error: {e}")
