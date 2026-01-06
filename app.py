@@ -3,7 +3,7 @@ import google.generativeai as genai
 import urllib.parse
 
 # --- PAGE SETUP ---
-st.set_page_config(page_title="Samketan Growth Engine", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Samketan Business Growth Engine", page_icon="📈", layout="wide")
 
 # --- 1. LOGIN & COMPANY PROFILE ---
 if "GOOGLE_API_KEY" in st.secrets:
@@ -11,44 +11,47 @@ if "GOOGLE_API_KEY" in st.secrets:
 else:
     api_key = st.sidebar.text_input("Paste Google API Key", type="password").strip()
 
-# --- COMPANY DESCRIPTION TAB (UNCHANGED) ---
+# --- SIDEBAR: COMPANY DESCRIPTION (EMPTY BY DEFAULT) ---
 with st.sidebar:
     st.header("🏢 Your Company Profile")
     my_company_desc = st.text_area("Describe your company & services", 
-        value="Samketan: We provide high-end Warehouse Storage solutions and Industrial Racking for large businesses.",
+        value="", 
+        placeholder="e.g., Samketan: We provide high-end Warehouse Storage solutions...",
         help="The AI will use this to write the professional email and WhatsApp pitch.")
 
 # --- MAIN DASHBOARD ---
-st.title("🚀 Business Growth Engine")
+st.header("🚀 Samketan Business Growth Engine")
 
-# --- 2. THE 4 QUESTIONS ---
+# --- 2. THE 4 QUESTIONS (EMPTY BY DEFAULT) ---
 col1, col2 = st.columns(2)
 with col1:
-    my_product = st.text_input("1) What is your product/service?", value="Warehouse Storage")
-    region = st.text_input("3) Target City/Region?", "Gulbarga")
+    my_product = st.text_input("1) What is your product/service?", value="", placeholder="e.g., Industrial Racking")
+    region = st.text_input("3) Target City/Region?", value="", placeholder="e.g., Gulbarga")
 with col2:
-    target_client = st.text_input("2) Who is your client?", "Dal Mills")
+    target_client = st.text_input("2) Who is your client?", value="", placeholder="e.g., Dal Mills")
     scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
 
 # --- 3. DATA ENGINE ---
 if st.button("🚀 Generate 10 Pro Leads"):
     if not api_key:
         st.error("Please provide an API Key.")
+    elif not my_company_desc:
+        st.warning("Please fill in your Company Profile in the sidebar first.")
     else:
         try:
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel('gemini-2.5-flash')
 
-            with st.spinner("🔍 Fetching full URLs and 10-digit contact numbers..."):
-                # PROMPT: STRICT instructions for URLs and Phone numbers
+            with st.spinner("🔍 Mining 10 leads with deep contact info and direct links..."):
                 prompt = f"""
-                Act as a B2B Data Mining Expert. Find 10 REAL and ACTIVE businesses in {region} for {target_client}.
+                Act as a B2B Lead Generation Expert. Find 10 REAL and ACTIVE businesses in {region} for {target_client}.
+                They must be potential buyers for {my_product}.
                 
                 STRICT DATA REQUIREMENTS:
-                1. WEBSITE: Provide the FULL ACTUAL URL (e.g. www.company.com). DO NOT hide it.
-                2. LINKEDIN: Provide the FULL REAL LinkedIn URL for the company or owner.
-                3. PHONE: Provide the FULL 10-digit number. NO masking. NO "Refer to Director".
-                4. EMAIL: Provide the real professional email ID.
+                1. WEBSITE: Full URL.
+                2. LINKEDIN: Provide the direct profile URL or a direct search URL for the Person Name + Company.
+                3. PHONE: FULL 10-digits. No masking.
+                4. EMAIL: Real professional email ID.
                 
                 Return a table with:
                 Agency Name | Address | Website | Email ID | Phone/WhatsApp | LinkedIn Profile | Concern Person
@@ -70,30 +73,42 @@ if st.button("🚀 Generate 10 Pro Leads"):
                         else: # Data Rows
                             name, addr, web, email, phone, link, person = cols[0], cols[1], cols[2], cols[3], cols[4], cols[5], cols[6]
                             
-                            # Clean URLs for clicking
+                            # Clean URLs
                             web_click = web if web.startswith("http") else f"http://{web}"
-                            li_click = link if link.startswith("http") else f"https://www.linkedin.com/search/results/all/?keywords={urllib.parse.quote(name + ' ' + person)}"
+                            # DIRECT LINKEDIN LINK FIX
+                            li_click = link if link.startswith("http") else f"https://www.linkedin.com/search/results/all/?keywords={urllib.parse.quote(person + ' ' + name)}"
                             
-                            # Create WhatsApp Link
+                            # PROFESSIONAL WHATSAPP MESSAGE
+                            wa_msg = (f"Hello {person},\n\nI hope you are having a productive day. "
+                                      f"I am reaching out from {my_company_desc}.\n\n"
+                                      f"We have been following the growth of {name} in {region} and believe our "
+                                      f"specialized {my_product} can add significant value to your operations. "
+                                      f"Are you available for a 2-minute introductory chat this week?")
+                            
                             clean_phone = "".join(filter(str.isdigit, phone))
                             if len(clean_phone) == 10: clean_phone = "91" + clean_phone
-                            wa_msg = f"Hello {person},\n\nI am reaching out from {my_company_desc}. We specialize in {my_product} and would love to support {name}."
                             wa_link = f"<a href='https://wa.me/{clean_phone}?text={urllib.parse.quote(wa_msg)}' target='_blank' style='color: #25D366; font-weight: bold;'>📲 {phone}</a>"
                             
-                            # Create Mail Link
-                            subject = f"Business Proposal: {my_product}"
-                            mail_body = f"Dear {person},\n\nRegarding {name}, our company ({my_company_desc}) specializes in {my_product}."
+                            # PROFESSIONAL EMAIL COMPOSITION
+                            subject = f"Collaboration Proposal for {name} | {my_product}"
+                            mail_body = (f"Dear {person},\n\n"
+                                         f"I am writing to you on behalf of {my_company_desc}. "
+                                         f"We specialize in providing {my_product} designed to help {target_client} "
+                                         f"optimize efficiency and scale operations.\n\n"
+                                         f"We have noticed the impressive work {name} is doing in {region}, "
+                                         f"and we would like to explore how our services can support your upcoming goals.\n\n"
+                                         f"Could we schedule a brief call next Tuesday or Wednesday to discuss this further?\n\n"
+                                         f"Best Regards,\n\n[Your Name]\n{my_company_desc}")
+                            
                             mail_link = f"<a href='mailto:{email}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(mail_body)}' style='color: #007bff;'>📧 {email}</a>"
                             
                             html_table += f"<tr>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{name}</td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{addr}</td>"
-                            # WEBSITE: Shows full URL as requested
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'><a href='{web_click}' target='_blank'>{web}</a></td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{mail_link}</td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{wa_link}</td>"
-                            # LINKEDIN: Shows full URL as requested
-                            html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'><a href='{li_click}' target='_blank' style='color: #0a66c2;'>{link}</a></td>"
+                            html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'><a href='{li_click}' target='_blank' style='color: #0a66c2;'>🔗 {person}</a></td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{person}</td>"
                             html_table += f"</tr>"
                 
