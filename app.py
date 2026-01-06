@@ -39,16 +39,16 @@ if st.button("🚀 Generate 10 Pro Leads"):
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel('gemini-2.5-flash')
 
-            with st.spinner("🔍 Performing Deep Search for real numbers and LinkedIn profiles..."):
-                # PROMPT: Explicitly told NOT to use generic phrases like "Refer to Director"
+            with st.spinner("🔍 Fetching full URLs and 10-digit contact numbers..."):
+                # PROMPT: STRICT instructions for URLs and Phone numbers
                 prompt = f"""
-                Act as a B2B Data Mining Expert. Find 10 REAL businesses in {region} for {target_client}.
-                They must be potential buyers for {my_product}.
+                Act as a B2B Data Mining Expert. Find 10 REAL and ACTIVE businesses in {region} for {target_client}.
                 
-                STRICT RULES:
-                1. PHONE: You MUST provide a real, 10-digit mobile/office number. DO NOT write "Refer to Director" or "Private".
-                2. LINKEDIN: You MUST provide the direct URL (e.g., https://linkedin.com/in/name or /company/name). DO NOT just write "LinkedIn".
-                3. WEBSITE: Provide the full actual URL.
+                STRICT DATA REQUIREMENTS:
+                1. WEBSITE: Provide the FULL ACTUAL URL (e.g. www.company.com). DO NOT hide it.
+                2. LINKEDIN: Provide the FULL REAL LinkedIn URL for the company or owner.
+                3. PHONE: Provide the FULL 10-digit number. NO masking. NO "Refer to Director".
+                4. EMAIL: Provide the real professional email ID.
                 
                 Return a table with:
                 Agency Name | Address | Website | Email ID | Phone/WhatsApp | LinkedIn Profile | Concern Person
@@ -70,9 +70,9 @@ if st.button("🚀 Generate 10 Pro Leads"):
                         else: # Data Rows
                             name, addr, web, email, phone, link, person = cols[0], cols[1], cols[2], cols[3], cols[4], cols[5], cols[6]
                             
-                            # Clean Web & LinkedIn URLs
-                            web_url = web if web.startswith("http") else f"https://{web}"
-                            li_url = link if link.startswith("http") else f"https://www.linkedin.com/search/results/all/?keywords={urllib.parse.quote(name + ' ' + person)}"
+                            # Clean URLs for clicking
+                            web_click = web if web.startswith("http") else f"http://{web}"
+                            li_click = link if link.startswith("http") else f"https://www.linkedin.com/search/results/all/?keywords={urllib.parse.quote(name + ' ' + person)}"
                             
                             # Create WhatsApp Link
                             clean_phone = "".join(filter(str.isdigit, phone))
@@ -82,23 +82,24 @@ if st.button("🚀 Generate 10 Pro Leads"):
                             
                             # Create Mail Link
                             subject = f"Business Proposal: {my_product}"
-                            mail_body = f"Dear {person},\n\nI hope you are well. Regarding {name}, {my_company_desc} would like to propose our {my_product} services."
+                            mail_body = f"Dear {person},\n\nRegarding {name}, our company ({my_company_desc}) specializes in {my_product}."
                             mail_link = f"<a href='mailto:{email}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(mail_body)}' style='color: #007bff;'>📧 {email}</a>"
                             
                             html_table += f"<tr>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{name}</td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{addr}</td>"
-                            html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'><a href='{web_url}' target='_blank'>🌐 Visit</a></td>"
+                            # WEBSITE: Shows full URL as requested
+                            html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'><a href='{web_click}' target='_blank'>{web}</a></td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{mail_link}</td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{wa_link}</td>"
-                            # LINKEDIN FIX: Now uses the actual link found or a direct search link
-                            html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'><a href='{li_url}' target='_blank' style='color: #0a66c2; font-weight: bold;'>🔗 Profile</a></td>"
+                            # LINKEDIN: Shows full URL as requested
+                            html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'><a href='{li_click}' target='_blank' style='color: #0a66c2;'>{link}</a></td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{person}</td>"
                             html_table += f"</tr>"
                 
                 html_table += "</table>"
                 
-                st.markdown("### 📋 10 Actionable Sales Leads")
+                st.markdown("### 📋 10 Verified Sales Leads")
                 st.write(html_table, unsafe_allow_html=True)
                 
                 st.download_button("📥 Download CSV", data=response.text, file_name="samketan_leads.csv")
