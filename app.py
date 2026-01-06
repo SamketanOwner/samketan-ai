@@ -8,12 +8,8 @@ import json
 # --- SIMPLIFIED FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
     try:
-        # Load secrets as a simple dictionary
         fb_dict = dict(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
-        
-        # We REMOVED the .replace line! 
-        # The triple-quote block in your secrets handles everything now.
-            
+        # Simple loading - the multiline secret handles the formatting!
         cred = credentials.Certificate(fb_dict)
         firebase_admin.initialize_app(cred)
     except Exception as e:
