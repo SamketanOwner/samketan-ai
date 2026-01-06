@@ -5,15 +5,14 @@ import google.generativeai as genai
 import urllib.parse
 import json
 
-# --- SYNCED FIREBASE INITIALIZATION ---
+# --- SIMPLIFIED FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
     try:
-        # Load the dictionary from secrets
+        # Load secrets as a simple dictionary
         fb_dict = dict(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
         
-        # THE FIX: Convert literal \n markers into actual lines for the PEM loader
-        if "private_key" in fb_dict:
-            fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+        # We REMOVED the .replace line! 
+        # The triple-quote block in your secrets handles everything now.
             
         cred = credentials.Certificate(fb_dict)
         firebase_admin.initialize_app(cred)
