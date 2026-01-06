@@ -5,19 +5,21 @@ import google.generativeai as genai
 import urllib.parse
 import json
 
-# --- 1. PAGE SETUP (MUST BE FIRST) ---
-st.set_page_config(page_title="Samketan Business Growth Engine", page_icon="📈", layout="wide")
-
-# --- 2. FIREBASE INITIALIZATION ---
+# --- REFINED FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
     try:
+        # 1. Load the dictionary from secrets
         fb_dict = dict(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
+        
+        # 2. THE FIX: Convert literal \n into real newlines
+        if "private_key" in fb_dict:
+            fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
+            
         cred = credentials.Certificate(fb_dict)
         firebase_admin.initialize_app(cred)
     except Exception as e:
         st.error(f"⚠️ Firebase Identity Gate Error: {e}")
         st.stop()
-
 # --- 3. LOGIN LOGIC ---
 if 'authenticated' not in st.session_state:
     st.session_state['authenticated'] = False
