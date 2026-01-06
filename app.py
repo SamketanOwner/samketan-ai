@@ -12,24 +12,18 @@ st.set_page_config(page_title="Samketan Business Growth Engine", page_icon="📈
 if not firebase_admin._apps:
     try:
         fb_dict = dict(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
-        # Clean the key to fix "InvalidByte" and "Padding" errors
-        raw_key = fb_dict["private_key"]
-        clean_key = "".join(char for char in raw_key if ord(char) < 128)
-        fb_dict["private_key"] = clean_key.replace("\\n", "\n")
-            
         cred = credentials.Certificate(fb_dict)
         firebase_admin.initialize_app(cred)
     except Exception as e:
         st.error(f"⚠️ Firebase Identity Gate Error: {e}")
         st.stop()
 
-# --- 3. LOGIN SESSION STATE ---
+# --- 3. LOGIN LOGIC ---
 if 'authenticated' not in st.session_state:
     st.session_state['authenticated'] = False
 
-# --- 4. THE LOGIN GATE (THE FRONT DOOR) ---
 if not st.session_state['authenticated']:
-    st.header("🔐 Samketan Business Growth Engine")
+    st.title("🔐 Samketan Business Growth Engine")
     st.write("Please verify your identity to continue.")
     
     email = st.text_input("Business Email")
@@ -52,9 +46,9 @@ if not st.session_state['authenticated']:
                 st.success("Account created! Now click 'Log In'.")
             except Exception as e:
                 st.error(f"Sign up error: {e}")
-    st.stop() 
+    st.stop() # This "stops" the app here until you log in
 
-# --- 5. YOUR EXISTING PATTERN (UNCHANGED) ---
+# --- 4. YOUR ORIGINAL ENGINE (START) ---
 
 # Get API Key from Secrets
 api_key = st.secrets.get("GOOGLE_API_KEY", "")
@@ -66,7 +60,7 @@ with st.sidebar:
     my_company_desc = st.text_area("Describe your company & services", 
         value="", 
         placeholder="e.g., Samketan: We provide high-end Warehouse Storage solutions...",
-        help="The AI will use this to write the professional pitch.")
+        help="The AI will use this to write the professional email and WhatsApp pitch.")
     
     if st.button("Logout"):
         st.session_state['authenticated'] = False
@@ -83,10 +77,10 @@ with col2:
     target_client = st.text_input("2) Who is your client?", value="", placeholder="e.g., Dal Mills")
     scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
 
-# THE DATA ENGINE
+# THE DATA ENGINE (SEARCH & RESULTS)
 if st.button("🚀 Generate 10 Pro Leads"):
     if not api_key:
-        st.error("Please provide an API Key.")
+        st.error("Please provide an API Key in Secrets.")
     elif not my_company_desc:
         st.warning("Please fill in your Company Profile in the sidebar first.")
     else:
@@ -100,11 +94,6 @@ if st.button("🚀 Generate 10 Pro Leads"):
                 They must be potential buyers for {my_product}.
                 
                 STRICT DATA REQUIREMENTS:
-                1. WEBSITE: Full URL.
-                2. LINKEDIN: Provide the direct profile URL or a direct search URL for the Person Name + Company.
-                3. PHONE: FULL 10-digits. No masking.
-                4. EMAIL: Real professional email ID.
-                
                 Return a table with:
                 Agency Name | Address | Website | Email ID | Phone/WhatsApp | LinkedIn Profile | Concern Person
                 """
@@ -112,6 +101,7 @@ if st.button("🚀 Generate 10 Pro Leads"):
                 response = model.generate_content(prompt)
                 lines = response.text.split('\n')
                 
+                # PROCESSING THE TABLE
                 html_table = "<table style='width:100%; border-collapse: collapse; font-family: Arial; font-size: 13px;'>"
                 
                 for i, line in enumerate(lines):
@@ -124,27 +114,24 @@ if st.button("🚀 Generate 10 Pro Leads"):
                         else:
                             name, addr, web, email, phone, link, person = cols[0], cols[1], cols[2], cols[3], cols[4], cols[5], cols[6]
                             
+                            # Clean URLs
                             web_click = web if web.startswith("http") else f"http://{web}"
                             li_click = link if link.startswith("http") else f"https://www.linkedin.com/search/results/all/?keywords={urllib.parse.quote(person + ' ' + name)}"
                             
+                            # Professional WhatsApp Message
                             wa_msg = (f"Hello {person},\n\nI hope you are having a productive day. "
                                       f"I am reaching out from {my_company_desc}.\n\n"
-                                      f"We have been following the growth of {name} in {region} and believe our "
-                                      f"specialized {my_product} can add significant value to your operations.")
+                                      f"We believe our specialized {my_product} can add significant value to {name}.")
                             
                             clean_phone = "".join(filter(str.isdigit, phone))
                             if len(clean_phone) == 10: clean_phone = "91" + clean_phone
                             wa_link = f"<a href='https://wa.me/{clean_phone}?text={urllib.parse.quote(wa_msg)}' target='_blank' style='color: #25D366; font-weight: bold;'>📲 {phone}</a>"
                             
-                            subject = f"Collaboration Proposal for {name} | {my_product}"
-                            mail_body = f"Dear {person},\n\nI am writing on behalf of {my_company_desc}..."
-                            mail_link = f"<a href='mailto:{email}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(mail_body)}' style='color: #007bff;'>📧 {email}</a>"
-                            
                             html_table += f"<tr>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{name}</td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{addr}</td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'><a href='{web_click}' target='_blank'>{web}</a></td>"
-                            html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{mail_link}</td>"
+                            html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{email}</td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{wa_link}</td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'><a href='{li_click}' target='_blank' style='color: #0a66c2;'>🔗 {person}</a></td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{person}</td>"
