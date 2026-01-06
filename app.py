@@ -1,36 +1,34 @@
 import streamlit as st
 import google.generativeai as genai
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="Samketan Growth Engine", page_icon="📈", layout="wide")
+# --- PAGE SETUP ---
+st.set_page_config(page_title="Samketan Growth Engine", page_icon="🏢", layout="wide")
 
-# --- 1. LOGIN LOGIC ---
+# --- LOGIN LOGIC (UNCHANGED) ---
 if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"]
-    auth_status = "✅ Auto-Logged In"
+    auth_status = "✅ System Linked"
 else:
-    api_key = st.sidebar.text_input("Paste Google API Key", type="password").strip()
-    auth_status = "⚠️ using manual key"
+    api_key = st.sidebar.text_input("Enter API Key", type="password").strip()
+    auth_status = "⚠️ Key Missing"
 
-# --- SIDEBAR ---
 with st.sidebar:
-    st.header("Samketan Growth Engine")
-    st.caption(auth_status)
-    st.info("Mode: High-Quota Free Tier")
+    st.header("Settings")
+    st.info(auth_status)
 
-# --- MAIN APP ---
+# --- MAIN DASHBOARD ---
 st.title("🚀 Business Growth Engine")
 
-# --- 2. INPUTS (YOUR 4 QUESTIONS) ---
+# --- THE 4 QUESTIONS ---
 col1, col2 = st.columns(2)
 with col1:
-    my_product = st.text_input("1) What is your product/service?", placeholder="e.g. Warehouse Storage")
+    my_product = st.text_input("1) What is your product?", "Warehouse Storage")
     region = st.text_input("3) Target Region?", "Gulbarga")
 with col2:
-    target_client = st.text_input("2) Who is your client?", placeholder="e.g. Dal Mills")
+    target_client = st.text_input("2) Who is your client?", "Dal Mills")
     scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
 
-# --- 3. OUTPUT LOGIC (FORCED STABLE FLASH) ---
+# --- SMART CONNECTION LOGIC ---
 if st.button("🚀 Identify Leads"):
     if not api_key:
         st.error("Please provide an API Key.")
@@ -38,38 +36,28 @@ if st.button("🚀 Identify Leads"):
         try:
             genai.configure(api_key=api_key)
             
-            # FORCING THE STABLE 1.5 FLASH (1500 RPD Free Tier)
-            # This avoids the 'Limit: 0' error on 2.5 Pro
-            model_name = 'gemini-1.5-flash'
-            model = genai.GenerativeModel(model_name)
+            with st.spinner("🔍 Detecting your available models..."):
+                # AUTOMATICALLY find a working model name
+                # This prevents the 404 error
+                model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                
+                # Priority list: Gemini 3 -> Gemini 2.5 -> Gemini 1.5
+                best_model = None
+                for name in ["models/gemini-3-flash", "models/gemini-2.5-flash", "models/gemini-1.5-flash"]:
+                    if name in model_list:
+                        best_model = name
+                        break
+                
+                if not best_model:
+                    best_model = model_list[0] # Just take whatever works
+
+            # --- GENERATE THE TABLE ---
+            model = genai.GenerativeModel(best_model)
+            prompt = f"Find 5 REAL businesses in {region} that are {target_client}. Use a Table format with columns: Agency Name, Address, Contact Person, Phone."
             
-            with st.spinner(f"🔎 Using Stable Engine ({model_name})... searching {region}..."):
-                
-                prompt = f"""
-                Act as a Data Mining Expert.
-                MY PROFILE:
-                - Offering: {my_product}
-                - Client Target: {target_client}
-                - Region: {region}
-                - Scope: {scope}
-                
-                TASK: Find 5 REAL business leads matching this profile.
-                
-                OUTPUT FORMAT:
-                Provide result as a Markdown Table:
-                | Agency Name | Address | Contact Person | Email (Likely) | Phone / WhatsApp |
-                
-                RULES:
-                1. Use real businesses in {region}.
-                2. Be specific with locations.
-                """
-                
-                response = model.generate_content(prompt)
-                st.success(f"✅ Leads Found!")
-                st.markdown(response.text)
+            response = model.generate_content(prompt)
+            st.success(f"✅ Found Leads using {best_model}")
+            st.markdown(response.text)
 
         except Exception as e:
-            if "429" in str(e):
-                st.error("❌ Quota Still Blocked. Please wait 60 seconds or generate a NEW Key at aistudio.google.com (it only takes 30 seconds).")
-            else:
-                st.error(f"❌ Error: {e}")
+            st.error(f"❌ Connection Error: {e}")
