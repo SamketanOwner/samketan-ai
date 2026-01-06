@@ -1,63 +1,64 @@
 import streamlit as st
 import google.generativeai as genai
 
-# --- PAGE SETUP ---
-st.set_page_config(page_title="Samketan Growth Engine", page_icon="🏢", layout="wide")
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Samketan Growth Engine", page_icon="📈", layout="wide")
 
-# --- LOGIN LOGIC (UNCHANGED) ---
+# --- 1. SECURE LOGIN ---
+# This looks for the key in your Streamlit Cloud "Secrets"
 if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"]
-    auth_status = "✅ System Linked"
+    auth_status = "✅ System Connected"
 else:
+    # If secrets aren't set, allow manual entry for testing
     api_key = st.sidebar.text_input("Enter API Key", type="password").strip()
-    auth_status = "⚠️ Key Missing"
+    auth_status = "⚠️ Key Missing in Secrets"
 
+# --- SIDEBAR ---
 with st.sidebar:
-    st.header("Settings")
+    st.header("Samketan 2026")
     st.info(auth_status)
+    st.caption("Using Stable Model: Gemini 3 Flash")
 
-# --- MAIN DASHBOARD ---
+# --- MAIN APP ---
 st.title("🚀 Business Growth Engine")
+st.markdown("Structure your search to find high-value leads.")
 
-# --- THE 4 QUESTIONS ---
+# --- 2. THE 4 QUESTIONS ---
 col1, col2 = st.columns(2)
 with col1:
-    my_product = st.text_input("1) What is your product?", "Warehouse Storage")
-    region = st.text_input("3) Target Region?", "Gulbarga")
+    my_product = st.text_input("1) Your Product/Service", value="Warehouse Storage")
+    region = st.text_input("3) Target City/Region", value="Gulbarga")
 with col2:
-    target_client = st.text_input("2) Who is your client?", "Dal Mills")
+    target_client = st.text_input("2) Target Client Industry", value="Dal Mills & Food Processors")
     scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
 
-# --- SMART CONNECTION LOGIC ---
-if st.button("🚀 Identify Leads"):
-    if not api_key:
-        st.error("Please provide an API Key.")
+# --- 3. LEAD GENERATION ENGINE ---
+if st.button("🚀 Generate Leads Table"):
+    if not api_key or "AIza" not in api_key:
+        st.error("❌ Invalid API Key detected. Please update your Streamlit Secrets.")
     else:
         try:
             genai.configure(api_key=api_key)
             
-            with st.spinner("🔍 Detecting your available models..."):
-                # AUTOMATICALLY find a working model name
-                # This prevents the 404 error
-                model_list = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                
-                # Priority list: Gemini 3 -> Gemini 2.5 -> Gemini 1.5
-                best_model = None
-                for name in ["models/gemini-3-flash", "models/gemini-2.5-flash", "models/gemini-1.5-flash"]:
-                    if name in model_list:
-                        best_model = name
-                        break
-                
-                if not best_model:
-                    best_model = model_list[0] # Just take whatever works
-
-            # --- GENERATE THE TABLE ---
-            model = genai.GenerativeModel(best_model)
-            prompt = f"Find 5 REAL businesses in {region} that are {target_client}. Use a Table format with columns: Agency Name, Address, Contact Person, Phone."
+            # 2026 Stable Model: Gemini 3 Flash (High Quota Free Tier)
+            model = genai.GenerativeModel('gemini-3-flash')
             
-            response = model.generate_content(prompt)
-            st.success(f"✅ Found Leads using {best_model}")
-            st.markdown(response.text)
-
+            with st.spinner(f"📊 Mining data for {target_client} in {region}..."):
+                prompt = f"""
+                Act as a B2B Sales Expert. Find 5 REAL business leads in {region} for:
+                - My Product: {my_product}
+                - Their Industry: {target_client}
+                - Scope: {scope}
+                
+                OUTPUT: Strictly provide a Markdown table with:
+                | Agency Name | Address | Contact Role | Phone / WhatsApp | Why they match |
+                """
+                
+                response = model.generate_content(prompt)
+                st.markdown("---")
+                st.markdown(response.text)
+                st.success("✅ Search Complete")
+                
         except Exception as e:
-            st.error(f"❌ Connection Error: {e}")
+            st.error(f"❌ Connection Failed: {e}")
