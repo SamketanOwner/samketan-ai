@@ -3,16 +3,14 @@ import firebase_admin
 from firebase_admin import auth, credentials
 import base64 # <--- Make sure this is imported
 
-# --- THE BULLETPROOF INITIALIZATION ---
+# --- FIREBASE INITIALIZATION ---
 if not firebase_admin._apps:
     try:
         fb_dict = dict(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
         
-        # This replaces the .replace("\\n", "\n") line
-        # It decodes the scrambled string into a perfect certificate
-        encoded_key = fb_dict["private_key"]
-        decoded_key = base64.b64decode(encoded_key).decode("utf-8")
-        fb_dict["private_key"] = decoded_key
+        # This line converts the literal text "\n" into real line breaks
+        if "private_key" in fb_dict:
+            fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
             
         cred = credentials.Certificate(fb_dict)
         firebase_admin.initialize_app(cred)
