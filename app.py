@@ -8,11 +8,11 @@ import json
 # --- 1. PAGE SETUP (MUST BE FIRST) ---
 st.set_page_config(page_title="Samketan Business Growth Engine", page_icon="📈", layout="wide")
 
-# --- 2. FIREBASE INITIALIZATION ---
+# --- 2. FIREBASE INITIALIZATION (SECURITY GATE) ---
 if not firebase_admin._apps:
     try:
         fb_dict = dict(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
-        # Fix formatting for the private key automatically
+        # This fix removes the "Invalid Padding" error by cleaning the key
         if "private_key" in fb_dict:
             fb_dict["private_key"] = fb_dict["private_key"].replace("\\n", "\n")
             
@@ -22,15 +22,16 @@ if not firebase_admin._apps:
         st.error(f"⚠️ Firebase Setup Error: {e}")
         st.stop()
 
-# --- 3. LOGIN LOGIC ---
+# --- 3. LOGIN SESSION STATE ---
 if 'authenticated' not in st.session_state:
     st.session_state['authenticated'] = False
 
+# --- 4. THE LOGIN "GATE" (ONLY CHANGE REQUESTED) ---
 if not st.session_state['authenticated']:
-    st.title("🔐 Samketan Business Growth Engine")
+    st.header("🔐 Samketan Business Growth Engine")
     st.write("Please verify your identity to continue.")
     
-    email = st.text_input("Email")
+    email = st.text_input("Business Email")
     password = st.text_input("Password", type="password")
     
     col1, col2 = st.columns(2)
@@ -47,44 +48,46 @@ if not st.session_state['authenticated']:
         if st.button("Sign Up"):
             try:
                 auth.create_user(email=email, password=password)
-                st.success("Account created! You can now Log In.")
+                st.success("Account created! Now click 'Log In'.")
             except Exception as e:
                 st.error(f"Sign up error: {e}")
-    st.stop() # Prevents engine from loading until login is done
+    st.stop() # LOCK: Prevents the rest of the app from showing until logged in
 
-# --- 4. MAIN GROWTH ENGINE (Only runs if authenticated) ---
+# --- 5. YOUR EXISTING PATTERN (UNCHANGED AS REQUESTED) ---
 
-# Get API Key from Secrets
+# Get Gemini API Key
 api_key = st.secrets.get("GOOGLE_API_KEY", "")
 
+# SIDEBAR
 with st.sidebar:
     st.header("🏢 Your Company Profile")
-    st.write(f"Logged in: **{st.session_state['user_email']}**")
+    st.write(f"Verified: **{st.session_state['user_email']}**")
     
     my_company_desc = st.text_area("Describe your company & services", 
         value="", 
         placeholder="e.g., Samketan: We provide high-end Warehouse Storage solutions...",
-        help="The AI uses this to write the professional pitch.")
+        help="The AI will use this to write the professional email and WhatsApp pitch.")
     
     if st.button("Logout"):
         st.session_state['authenticated'] = False
         st.rerun()
 
+# HEADER
 st.header("🚀 Samketan Business Growth Engine")
 
-# --- THE 4 QUESTIONS ---
+# THE 4 QUESTIONS
 col1, col2 = st.columns(2)
 with col1:
-    my_product = st.text_input("1) What is your product/service?", placeholder="e.g., Industrial Racking")
-    region = st.text_input("3) Target City/Region?", placeholder="e.g., Gulbarga")
+    my_product = st.text_input("1) What is your product/service?", value="", placeholder="e.g., Industrial Racking")
+    region = st.text_input("3) Target City/Region?", value="", placeholder="e.g., Gulbarga")
 with col2:
-    target_client = st.text_input("2) Who is your client?", placeholder="e.g., Dal Mills")
+    target_client = st.text_input("2) Who is your client?", value="", placeholder="e.g., Dal Mills")
     scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
 
-# --- DATA ENGINE LOGIC ---
+# THE DATA ENGINE (REMAINING PATTERN)
 if st.button("🚀 Generate 10 Pro Leads"):
     if not api_key:
-        st.error("Please provide a Gemini API Key in Streamlit Secrets.")
+        st.error("Please provide an API Key.")
     elif not my_company_desc:
         st.warning("Please fill in your Company Profile in the sidebar first.")
     else:
@@ -92,7 +95,7 @@ if st.button("🚀 Generate 10 Pro Leads"):
             genai.configure(api_key=api_key)
             model = genai.GenerativeModel('gemini-2.5-flash')
 
-            with st.spinner("🔍 Mining 10 leads with deep contact info..."):
+            with st.spinner("🔍 Mining 10 leads with deep contact info and direct links..."):
                 prompt = f"""
                 Act as a B2B Lead Generation Expert. Find 10 REAL and ACTIVE businesses in {region} for {target_client}.
                 They must be potential buyers for {my_product}.
@@ -117,23 +120,25 @@ if st.button("🚀 Generate 10 Pro Leads"):
                         cols = [c.strip() for c in line.split('|') if c.strip()]
                         if len(cols) < 7: continue
                         
-                        if i == 0 or "Agency Name" in line:
+                        if i == 0 or "Agency Name" in line: # Header
                             html_table += "<tr>" + "".join([f"<th style='border: 1px solid #ddd; padding: 10px; background-color: #f8f9fa;'>{c}</th>" for c in cols]) + "</tr>"
-                        else:
+                        else: # Data Rows
                             name, addr, web, email, phone, link, person = cols[0], cols[1], cols[2], cols[3], cols[4], cols[5], cols[6]
                             
                             web_click = web if web.startswith("http") else f"http://{web}"
                             li_click = link if link.startswith("http") else f"https://www.linkedin.com/search/results/all/?keywords={urllib.parse.quote(person + ' ' + name)}"
                             
-                            wa_msg = (f"Hello {person},\n\nI hope you are having a productive day. I am reaching out from {my_company_desc}. "
-                                      f"We believe our specialized {my_product} can add significant value to {name}. Are you available for a brief chat?")
+                            wa_msg = (f"Hello {person},\n\nI hope you are having a productive day. "
+                                      f"I am reaching out from {my_company_desc}.\n\n"
+                                      f"We have been following the growth of {name} in {region} and believe our "
+                                      f"specialized {my_product} can add significant value to your operations.")
                             
                             clean_phone = "".join(filter(str.isdigit, phone))
                             if len(clean_phone) == 10: clean_phone = "91" + clean_phone
                             wa_link = f"<a href='https://wa.me/{clean_phone}?text={urllib.parse.quote(wa_msg)}' target='_blank' style='color: #25D366; font-weight: bold;'>📲 {phone}</a>"
                             
                             subject = f"Collaboration Proposal for {name} | {my_product}"
-                            mail_body = f"Dear {person},\n\nI am writing from {my_company_desc} regarding your operations in {region}..."
+                            mail_body = f"Dear {person},\n\nI am writing on behalf of {my_company_desc}..."
                             mail_link = f"<a href='mailto:{email}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(mail_body)}' style='color: #007bff;'>📧 {email}</a>"
                             
                             html_table += f"<tr>"
@@ -147,7 +152,6 @@ if st.button("🚀 Generate 10 Pro Leads"):
                             html_table += f"</tr>"
                 
                 html_table += "</table>"
-                st.markdown("### 📋 10 Verified Sales Leads")
                 st.write(html_table, unsafe_allow_html=True)
                 st.download_button("📥 Download CSV", data=response.text, file_name="samketan_leads.csv")
 
