@@ -1,6 +1,30 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import auth, credentials
+import re
+
+# --- UNIVERSAL CLEANER FIREBASE INITIALIZATION ---
+if not firebase_admin._apps:
+    try:
+        fb_dict = dict(st.secrets["FIREBASE_SERVICE_ACCOUNT"])
+        
+        # 1. Get the raw key
+        key = fb_dict["private_key"]
+        
+        # 2. STRIP ALL ILLEGAL BYTES (Fixes InvalidByte error)
+        # This removes any hidden characters that aren't standard letters/numbers/symbols
+        clean_key = "".join(char for char in key if ord(char) < 128)
+        
+        # 3. Fix the Newlines
+        fb_dict["private_key"] = clean_key.replace("\\n", "\n")
+            
+        cred = credentials.Certificate(fb_dict)
+        firebase_admin.initialize_app(cred)
+    except Exception as e:
+        st.error(f"⚠️ Firebase Identity Gate Error: {e}")
+        st.stop()import streamlit as st
+import firebase_admin
+from firebase_admin import auth, credentials
 import google.generativeai as genai
 import urllib.parse
 import json
