@@ -45,7 +45,7 @@ if st.button("🚀 Generate 10 Pro Leads"):
             # CONFIGURING THE ENGINE
             genai.configure(api_key=api_key)
             # Using the absolute latest stable model for 2026
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('models/gemini-1.5-flash')
 
             with st.spinner("🔍 Mining 10 leads with deep contact info and direct links..."):
                 prompt = f"""
