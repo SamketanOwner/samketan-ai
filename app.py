@@ -42,7 +42,7 @@ if st.button("🚀 Generate 10 Pro Leads"):
         try:
             genai.configure(api_key=api_key)
             # FIXED: Updated to the correct stable model name
-            model = genai.GenerativeModel('gemini-1.5-flash')
+           model = genai.GenerativeModel(model_name='models/gemini-1.5-flash')
 
             with st.spinner("🔍 Mining 10 leads with deep contact info and direct links..."):
                 prompt = f"""
