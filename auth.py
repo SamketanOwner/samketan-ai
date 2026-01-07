@@ -8,8 +8,8 @@ from email.mime.text import MIMEText
 
 # --- CONFIGURATION ---
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxkHAi7kn24BChb4zQktRE-u4kPY-sn9L96FLIqw4-czxzms03iCP1eNnPUGrAB_5HxA/exec" 
-GMAIL_USER = "YOUR_EMAIL@gmail.com"  # Enter your Gmail
-GMAIL_PASS = "YOUR_16_DIGIT_APP_PASSWORD" # Enter the 16-digit code from Step 1
+GMAIL_USER = "shgarampalli@gmail.com"  # Enter your Gmail
+GMAIL_PASS = "hbikssxqyzthscne" # Enter the 16-digit code from Step 1
 
 def send_otp_email(receiver_email, otp_code):
     try:
