@@ -1,23 +1,37 @@
 import streamlit as st
 import requests
+import smtplib
+import random
 from datetime import datetime
 import json
+from email.mime.text import MIMEText
 
-# 1. YOUR WEB APP URL (Verified)
+# --- CONFIGURATION ---
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxkHAi7kn24BChb4zQktRE-u4kPY-sn9L96FLIqw4-czxzms03iCP1eNnPUGrAB_5HxA/exec" 
+GMAIL_USER = "YOUR_EMAIL@gmail.com"  # Enter your Gmail
+GMAIL_PASS = "YOUR_16_DIGIT_APP_PASSWORD" # Enter the 16-digit code from Step 1
+
+def send_otp_email(receiver_email, otp_code):
+    try:
+        msg = MIMEText(f"Your Samketan Growth Engine verification code is: {otp_code}")
+        msg['Subject'] = '🔐 Samketan Access Code'
+        msg['From'] = GMAIL_USER
+        msg['To'] = receiver_email
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(GMAIL_USER, GMAIL_PASS)
+            server.send_message(msg)
+        return True
+    except Exception as e:
+        st.error(f"Email Error: {e}")
+        return False
 
 def log_to_google_sheet(user_info, method):
     try:
-        # Prepare the data for the Google Sheet row
-        data = {
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "contact": user_info,
-            "method": method
-        }
-        # Send the data to the Google Apps Script "Bridge"
+        data = {"timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "contact": user_info, "method": method}
         requests.post(SCRIPT_URL, data=json.dumps(data))
-    except Exception as e:
-        st.error(f"Logging error: {e}")
+    except:
+        pass
 
 def login_screen():
     st.title("🔐 Samketan Secure Access")
@@ -26,31 +40,31 @@ def login_screen():
         st.session_state.authenticated = False
 
     if not st.session_state.authenticated:
-        st.info("Verification Required")
-        
-        method = st.radio("Method:", ["Email", "Phone"])
-        user_input = st.text_input(f"Enter {method}")
+        user_email = st.text_input("Enter your Business Email to receive a code")
 
-        if st.button("Send Code"):
-            if user_input:
-                st.session_state.otp_sent = True
-                st.session_state.current_user = user_input
-                st.session_state.current_method = method
-                st.success("Code sent!")
-                st.rerun()  # <--- CRITICAL FIX: This forces the OTP box to appear
+        if st.button("Send Verification Code"):
+            if user_email and "@" in user_email:
+                # Generate a random 6-digit code
+                generated_otp = str(random.randint(100000, 999999))
+                st.session_state.correct_otp = generated_otp
+                
+                # Send the real email
+                if send_otp_email(user_email, generated_otp):
+                    st.session_state.otp_sent = True
+                    st.session_state.current_user = user_email
+                    st.success(f"A real code has been sent to {user_email}")
+                    st.rerun()
             else:
-                st.error("Please enter details.")
+                st.error("Please enter a valid email address.")
 
         if st.session_state.get("otp_sent"):
-            otp = st.text_input("Enter OTP (123456)", type="password")
-            if st.button("Verify"):
-                if otp == "123456":
-                    # 2. THIS LINE SENDS DATA TO YOUR SHEET
-                    log_to_google_sheet(st.session_state.current_user, st.session_state.current_method)
-                    
+            otp_input = st.text_input("Enter the 6-digit code from your inbox", type="password")
+            if st.button("Verify & Enter"):
+                if otp_input == st.session_state.get("correct_otp"):
+                    log_to_google_sheet(st.session_state.current_user, "Email")
                     st.session_state.authenticated = True
                     st.rerun()
                 else:
-                    st.error("Wrong code!")
+                    st.error("Wrong code! Please check your email.")
         return False
     return True
