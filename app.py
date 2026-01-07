@@ -1,4 +1,9 @@
 import streamlit as st
+import auth  # This connects to auth.py
+
+if not auth.login_screen():
+    st.stop()  # Everything below this line stays hidden until login
+import streamlit as st
 import google.generativeai as genai
 import urllib.parse
 import pandas as pd
