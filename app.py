@@ -39,9 +39,11 @@ if st.button("🚀 Generate 10 Pro Leads"):
         st.warning("Please fill in your Company Profile in the sidebar first.")
     else:
         try:
+            # Configure Gemini
             genai.configure(api_key=api_key)
-            # FIXED: Correct indentation and stable model path
-            model = genai.GenerativeModel(model_name='models/gemini-1.5-flash')
+            
+            # STABLE 2026 MODEL NAME FIX
+            model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
             with st.spinner("🔍 Mining 10 leads with deep contact info and direct links..."):
                 prompt = f"""
@@ -50,8 +52,8 @@ if st.button("🚀 Generate 10 Pro Leads"):
                 
                 STRICT DATA REQUIREMENTS:
                 1. WEBSITE: Full URL.
-                2. LINKEDIN: Provide the direct profile URL or a direct search URL for the Person Name + Company.
-                3. PHONE: FULL 10-digits. No masking.
+                2. LINKEDIN: Provide a direct search URL for the Person Name + Company.
+                3. PHONE: FULL 10-digits.
                 4. EMAIL: Real professional email ID.
                 
                 Return a table with:
@@ -82,20 +84,15 @@ if st.button("🚀 Generate 10 Pro Leads"):
                             wa_msg = (f"Hello {person},\n\nI hope you are having a productive day. "
                                       f"I am reaching out from {my_company_desc}.\n\n"
                                       f"We believe our specialized {my_product} can add significant value to {name}.\n\n"
-                                      f"Are you available for a 2-minute introductory chat this week?")
+                                      f"Are you available for a introductory chat?")
                             
                             clean_phone = "".join(filter(str.isdigit, phone))
                             if len(clean_phone) == 10: clean_phone = "91" + clean_phone
                             wa_link = f"<a href='https://wa.me/{clean_phone}?text={urllib.parse.quote(wa_msg)}' target='_blank' style='color: #25D366; font-weight: bold;'>📲 {phone}</a>"
                             
-                            # PROFESSIONAL EMAIL COMPOSITION
+                            # Build Email Link
                             subject = f"Collaboration Proposal for {name} | {my_product}"
-                            mail_body = (f"Dear {person},\n\n"
-                                         f"I am writing to you on behalf of {my_company_desc}. "
-                                         f"We specialize in providing {my_product} for {target_client}.\n\n"
-                                         f"Best Regards,\n\n{my_company_desc}")
-                            
-                            mail_link = f"<a href='mailto:{email}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(mail_body)}' style='color: #007bff;'>📧 {email}</a>"
+                            mail_link = f"<a href='mailto:{email}?subject={urllib.parse.quote(subject)}' style='color: #007bff;'>📧 {email}</a>"
                             
                             html_table += f"<tr>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{name}</td>"
@@ -108,10 +105,9 @@ if st.button("🚀 Generate 10 Pro Leads"):
                             html_table += f"</tr>"
                 
                 html_table += "</table>"
-                
                 st.markdown("### 📋 10 Verified Sales Leads")
                 st.write(html_table, unsafe_allow_html=True)
                 st.download_button("📥 Download CSV", data=response.text, file_name="samketan_leads.csv")
 
         except Exception as e:
-            st.error(f"❌ Error: {e}")
+            st.error(f"❌ Connection Error: {e}")
