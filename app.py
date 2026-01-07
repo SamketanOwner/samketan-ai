@@ -39,11 +39,11 @@ if st.button("🚀 Generate 10 Pro Leads"):
         st.warning("Please fill in your Company Profile in the sidebar first.")
     else:
         try:
-            # Configure Gemini
+            # Force apply the clean key
             genai.configure(api_key=api_key)
             
-            # STABLE 2026 MODEL NAME FIX
-            model = genai.GenerativeModel('gemini-1.5-flash-latest')
+            # STABLE MODEL FIX: This name is the most compatible with all API versions
+            model = genai.GenerativeModel('gemini-1.5-flash')
 
             with st.spinner("🔍 Mining 10 leads with deep contact info and direct links..."):
                 prompt = f"""
@@ -94,7 +94,7 @@ if st.button("🚀 Generate 10 Pro Leads"):
                             subject = f"Collaboration Proposal for {name} | {my_product}"
                             mail_link = f"<a href='mailto:{email}?subject={urllib.parse.quote(subject)}' style='color: #007bff;'>📧 {email}</a>"
                             
-                            html_table += f"<tr>"
+                            html_table += "<tr>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{name}</td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{addr}</td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'><a href='{web_click}' target='_blank'>{web}</a></td>"
@@ -102,7 +102,7 @@ if st.button("🚀 Generate 10 Pro Leads"):
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{wa_link}</td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'><a href='{li_click}' target='_blank' style='color: #0a66c2;'>🔗 LinkedIn</a></td>"
                             html_table += f"<td style='border: 1px solid #ddd; padding: 8px;'>{person}</td>"
-                            html_table += f"</tr>"
+                            html_table += "</tr>"
                 
                 html_table += "</table>"
                 st.markdown("### 📋 10 Verified Sales Leads")
