@@ -129,18 +129,33 @@ if st.button("🚀 Generate & View Full Leads"):
                     
                     df = pd.DataFrame(lead_data, columns=["Name", "Address", "Web", "Email", "Phone", "Role", "Person"])
                     st.download_button("📥 Download Organized Excel", data=df.to_csv(index=False).encode('utf-8'), file_name="leads.csv", mime="text/csv")
-# --- FOOTER ---
+# --- FOOTER & SIDEBAR ---
 st.markdown("---")
 st.caption("Samketan Engine v3.7 | Targeted LinkedIn People Search Enabled")
 
-# Everything for the sidebar in one clean block
 with st.sidebar:
-    st.info(f"Logged in as: {st.session_state.current_user}")
-    st.write("---") # Adds a visual separator line
-    if st.button("🚪 Logout from Engine"):
-        # 1. Reset all login session variables
+    # 1. HELP SECTION (This is the new safe part)
+    with st.expander("🎯 How to Use this Engine"):
+        st.markdown("""
+        **Step 1: Input Details**
+        Enter the target industry and location in the main window.
+        
+        **Step 2: People Search**
+        Click 'LinkedIn Search' to find decision-makers.
+        
+        **Step 3: Lead Tracking**
+        Every login is automatically logged to your Google Sheet for security.
+        """)
+    
+    st.write("---") 
+    
+    # 2. USER PROFILE INFO
+    st.info(f"👤 Logged in as:\n{st.session_state.current_user}")
+    
+    st.write("---") 
+    
+    # 3. LOGOUT BUTTON
+    if st.button("🚪 Logout from Engine", use_container_width=True):
         st.session_state.authenticated = False
         st.session_state.otp_sent = False
-        
-        # 2. Force the app to refresh and show the login screen
         st.rerun()
