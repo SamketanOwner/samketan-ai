@@ -2,19 +2,16 @@ import streamlit as st
 import google.generativeai as genai
 import urllib.parse
 
-# --- PAGE SETUP (Must be the first Streamlit command) ---
+# --- PAGE SETUP ---
 st.set_page_config(page_title="Samketan Business Growth Engine", page_icon="📈", layout="wide")
 
 # --- 1. SIDEBAR: AUTHENTICATION & PROFILE ---
 with st.sidebar:
     st.header("🔑 Authentication")
-    
-    # Check Secrets first, then Sidebar
     raw_key = st.secrets.get("GOOGLE_API_KEY", "")
     if not raw_key:
         raw_key = st.text_input("Paste Google API Key here", type="password")
     
-    # THE CLEANING STEP: Removes hidden spaces/newlines
     api_key_input = raw_key.strip() if raw_key else ""
     
     if api_key_input:
@@ -48,8 +45,8 @@ if st.button("🚀 Generate 10 Pro Leads"):
             # Configure Gemini
             genai.configure(api_key=api_key_input)
             
-            # Use the most stable model alias
-            model = genai.GenerativeModel('gemini-1.5-flash-latest')
+            # THE 404 FIX: Using the absolute model path
+            model = genai.GenerativeModel('models/gemini-1.5-flash')
 
             with st.spinner("🔍 Mining 10 leads..."):
                 prompt = f"""
@@ -64,7 +61,7 @@ if st.button("🚀 Generate 10 Pro Leads"):
                 if response:
                     lines = response.text.split('\n')
                     
-                    # --- REBUILDING YOUR BEAUTIFUL MORNING TABLE ---
+                    # --- REBUILDING THE MORNING TABLE ---
                     html_table = "<table style='width:100%; border-collapse: collapse; font-family: Arial; font-size: 13px;'>"
                     
                     for i, line in enumerate(lines):
@@ -80,7 +77,7 @@ if st.button("🚀 Generate 10 Pro Leads"):
                                 li_click = f"https://www.linkedin.com/search/results/all/?keywords={urllib.parse.quote(person + ' ' + name)}"
                                 
                                 # WhatsApp logic
-                                wa_msg = f"Hello {person}, I am reaching out from {my_company_desc} regarding our {my_product}."
+                                wa_msg = f"Hello {person}, reaching out from {my_company_desc} regarding {my_product}."
                                 clean_phone = "".join(filter(str.isdigit, phone))
                                 if len(clean_phone) == 10: clean_phone = "91" + clean_phone
                                 wa_link = f"<a href='https://wa.me/{clean_phone}?text={urllib.parse.quote(wa_msg)}' target='_blank' style='color: #25D366; font-weight: bold;'>📲 {phone}</a>"
