@@ -12,10 +12,27 @@ api_key = st.secrets.get("GOOGLE_API_KEY") or st.sidebar.text_input("Paste Googl
 
 def get_engine(key):
     try:
-        genai.configure(api_key=key)
-        # Using 1.5-flash for the higher 1500/day quota
-        return genai.GenerativeModel('gemini-1.5-flash')
-    except: return None
+        genai.configure(api_key=key.strip())
+        
+        # 1. Ask the API for a list of all models you are allowed to use
+        available_models = [m.name for m in genai.list_models() 
+                           if 'generateContent' in m.supported_generation_methods]
+        
+        # 2. Priority list: Try the newest models first
+        # This bypasses the 404 error by only using what is actually online
+        priority = [
+            'models/gemini-3-flash-preview', 
+            'models/gemini-2.5-flash', 
+            'models/gemini-1.5-flash'
+        ]
+        
+        # Find the best match
+        selected = next((m for m in priority if m in available_models), available_models[0])
+        return genai.GenerativeModel(selected)
+        
+    except Exception as e:
+        st.error(f"❌ Connection Error: {e}")
+        return None
 
 # --- SIDEBAR: COMPANY STRATEGY ---
 with st.sidebar:
