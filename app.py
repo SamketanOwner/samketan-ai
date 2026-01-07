@@ -9,7 +9,6 @@ st.set_page_config(page_title="Samketan Business Growth Engine", page_icon="📈
 if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"]
 else:
-    # Adding .strip() here fixes the 'Invalid Key' error
     api_key = st.sidebar.text_input("Paste Google API Key", type="password").strip()
 
 # --- SIDEBAR: COMPANY DESCRIPTION ---
@@ -41,8 +40,8 @@ if st.button("🚀 Generate 10 Pro Leads"):
     else:
         try:
             genai.configure(api_key=api_key)
-            # FIXED: Updated to the correct stable model name
-           model = genai.GenerativeModel(model_name='models/gemini-1.5-flash')
+            # FIXED: Correct indentation and stable model path
+            model = genai.GenerativeModel(model_name='models/gemini-1.5-flash')
 
             with st.spinner("🔍 Mining 10 leads with deep contact info and direct links..."):
                 prompt = f"""
@@ -77,13 +76,12 @@ if st.button("🚀 Generate 10 Pro Leads"):
                             
                             # Clean URLs
                             web_click = web if web.startswith("http") else f"http://{web}"
-                            li_click = link if link.startswith("http") else f"https://www.linkedin.com/search/results/all/?keywords={urllib.parse.quote(person + ' ' + name)}"
+                            li_click = f"https://www.linkedin.com/search/results/all/?keywords={urllib.parse.quote(person + ' ' + name)}"
                             
                             # PROFESSIONAL WHATSAPP MESSAGE
                             wa_msg = (f"Hello {person},\n\nI hope you are having a productive day. "
                                       f"I am reaching out from {my_company_desc}.\n\n"
-                                      f"We have been following the growth of {name} in {region} and believe our "
-                                      f"specialized {my_product} can add significant value to your operations. "
+                                      f"We believe our specialized {my_product} can add significant value to {name}.\n\n"
                                       f"Are you available for a 2-minute introductory chat this week?")
                             
                             clean_phone = "".join(filter(str.isdigit, phone))
@@ -94,10 +92,7 @@ if st.button("🚀 Generate 10 Pro Leads"):
                             subject = f"Collaboration Proposal for {name} | {my_product}"
                             mail_body = (f"Dear {person},\n\n"
                                          f"I am writing to you on behalf of {my_company_desc}. "
-                                         f"We specialize in providing {my_product} designed to help {target_client} "
-                                         f"optimize efficiency and scale operations.\n\n"
-                                         f"We noticed the work {name} is doing in {region}, "
-                                         f"and we would like to explore how our services can support your goals.\n\n"
+                                         f"We specialize in providing {my_product} for {target_client}.\n\n"
                                          f"Best Regards,\n\n{my_company_desc}")
                             
                             mail_link = f"<a href='mailto:{email}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(mail_body)}' style='color: #007bff;'>📧 {email}</a>"
@@ -113,6 +108,7 @@ if st.button("🚀 Generate 10 Pro Leads"):
                             html_table += f"</tr>"
                 
                 html_table += "</table>"
+                
                 st.markdown("### 📋 10 Verified Sales Leads")
                 st.write(html_table, unsafe_allow_html=True)
                 st.download_button("📥 Download CSV", data=response.text, file_name="samketan_leads.csv")
