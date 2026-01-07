@@ -13,7 +13,7 @@ api_key = st.secrets.get("GOOGLE_API_KEY") or st.sidebar.text_input("Paste Googl
 def get_engine(key):
     try:
         genai.configure(api_key=key)
-        # Using 1.5-flash for the higher 1500/day quota to avoid the 429 error
+        # Using 1.5-flash for the higher 1500/day quota
         return genai.GenerativeModel('gemini-1.5-flash')
     except: return None
 
@@ -42,15 +42,15 @@ if st.button("🚀 Generate & View Full Leads"):
     else:
         model = get_engine(api_key)
         if model:
-            with st.spinner("🔍 Mining detailed leads and generating direct LinkedIn search links..."):
+            with st.spinner("🔍 Mining detailed leads and generating targeted LinkedIn profile links..."):
                 prompt = f"""
                 Act as a B2B Sales Expert. Find 10 REAL businesses in {region} for {target_client}.
                 They must be potential buyers for {my_product}.
                 
                 STRICT REQUIREMENT: 
                 - Do not say 'Not Available'. 
-                - Identify the most likely 'Decision Maker Role' (e.g., F&B Manager, Purchase Head).
-                - Provide a 'Person Name' (or a specific title if name is unknown).
+                - Identify a likely 'Decision Maker Role' (e.g., F&B Manager, Store Manager).
+                - Provide a 'Person Name' (or a specific title like 'Operations Head' if name is unknown).
                 
                 Return ONLY a pipe-separated table:
                 Agency Name | Full Address | Website URL | Email ID | Phone Number | Decision Maker Role | Person Name
@@ -68,7 +68,7 @@ if st.button("🚀 Generate & View Full Leads"):
                     
                     # --- TABLE RENDERING ---
                     html_table = "<table style='width:100%; border-collapse: collapse; font-family: Arial; font-size: 13px;'>"
-                    html_table += "<tr style='background-color: #004a99; color: white;'><th>Business Details</th><th>Website</th><th>Email (Compose)</th><th>WhatsApp (Shoot)</th><th>Direct LinkedIn Search</th></tr>"
+                    html_table += "<tr style='background-color: #004a99; color: white;'><th>Business Details</th><th>Website</th><th>Email (Shoot)</th><th>WhatsApp (Shoot)</th><th>Direct LinkedIn Search</th></tr>"
 
                     for line in lines:
                         if '|' in line and 'Agency' not in line and '---' not in line:
@@ -85,9 +85,9 @@ if st.button("🚀 Generate & View Full Leads"):
                             wa_link = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(wa_msg)}"
                             mail_link = f"mailto:{email}?subject=Partnership&body={urllib.parse.quote(wa_msg)}"
                             
-                            # THE FIX: Direct LinkedIn Boolean Search
-                            # This format triggers the LinkedIn Search Engine to find that specific person at that company
-                            li_search_query = f'"{person}" {role} "{name}"'
+                            # --- DEEP LINKEDIN SEARCH FIX ---
+                            # Logic: Searches specifically for the Person's Name AND Company Name in the People category
+                            li_search_query = f'"{person}" "{name}"'
                             li_link = f"https://www.linkedin.com/search/results/people/?keywords={urllib.parse.quote(li_search_query)}&origin=GLOBAL_SEARCH_HEADER"
 
                             html_table += f"""
@@ -98,7 +98,7 @@ if st.button("🚀 Generate & View Full Leads"):
                                 <td style='border: 1px solid #ddd; padding: 10px;'><a href='{wa_link}' target='_blank' style='color: #25D366; font-weight: bold;'>{phone} [Shoot]</a></td>
                                 <td style='border: 1px solid #ddd; padding: 10px;'>
                                     <b>{person}</b><br><small>({role})</small><br>
-                                    <a href='{li_link}' target='_blank' style='color: #0a66c2; font-weight: bold;'>🔗 Find Profile on LinkedIn</a>
+                                    <a href='{li_link}' target='_blank' style='color: #0a66c2; font-weight: bold;'>🔗 Direct LinkedIn Profile</a>
                                 </td>
                             </tr>"""
                     
@@ -110,4 +110,4 @@ if st.button("🚀 Generate & View Full Leads"):
 
 # --- FOOTER ---
 st.markdown("---")
-st.caption("Samketan Engine v3.7 | Targeted LinkedIn Deep Search Enabled")
+st.caption("Samketan Engine v3.7 | Targeted LinkedIn People Search Enabled")
