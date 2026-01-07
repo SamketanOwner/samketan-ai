@@ -3,7 +3,7 @@ import requests
 from datetime import datetime
 import json
 
-# 1. PASTE YOUR WEB APP URL HERE
+# 1. YOUR WEB APP URL (Verified)
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxkHAi7kn24BChb4zQktRE-u4kPY-sn9L96FLIqw4-czxzms03iCP1eNnPUGrAB_5HxA/exec" 
 
 def log_to_google_sheet(user_info, method):
@@ -37,6 +37,7 @@ def login_screen():
                 st.session_state.current_user = user_input
                 st.session_state.current_method = method
                 st.success("Code sent!")
+                st.rerun()  # <--- CRITICAL FIX: This forces the OTP box to appear
             else:
                 st.error("Please enter details.")
 
