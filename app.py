@@ -13,17 +13,27 @@ api_key = st.secrets.get("GOOGLE_API_KEY") or st.sidebar.text_input("Paste Googl
 def get_engine(key):
     try:
         genai.configure(api_key=key)
-        available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        # Using 1.5-flash as it has the most stable free-tier quota
-        return genai.GenerativeModel('gemini-1.5-flash')
-    except: return None
+        # 404 FIX: We dynamically find the active model instead of hardcoding a path
+        available_models = [m.name for m in genai.list_models() 
+                           if 'generateContent' in m.supported_generation_methods]
+        
+        # Priority list for 2026 stable models
+        for target in ['models/gemini-2.5-flash', 'models/gemini-1.5-flash', 'models/gemini-pro']:
+            if target in available_models:
+                return genai.GenerativeModel(target)
+        
+        # Fallback to the first available model if the above aren't found
+        return genai.GenerativeModel(available_models[0])
+    except Exception as e:
+        st.error(f"Initialization Error: {e}")
+        return None
 
 # --- SIDEBAR: COMPANY STRATEGY ---
 with st.sidebar:
     st.header("🏢 Samketan Strategy")
     strategy_note = st.text_area("Why Samketan is Best?", 
         value="We provide premium quality, natural ingredients, and a reliable cold-chain supply with 24/7 support.", 
-        help="This text will be injected into your WhatsApp and Email compositions.")
+        help="This text will be injected into your WhatsApp and Email.")
 
 # --- MAIN DASHBOARD ---
 st.header("🚀 Samketan Business Growth Engine")
@@ -31,7 +41,7 @@ st.header("🚀 Samketan Business Growth Engine")
 col1, col2 = st.columns(2)
 with col1:
     my_product = st.text_input("1) Product/Service", value="ice cream")
-    region = st.text_input("3) Target City/Region", value="gulbarga")
+    region = st.text_input("3) Target Region", value="gulbarga")
 with col2:
     target_client = st.text_input("2) Who is your client?", value="hotels, smart bazar")
     scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
@@ -43,37 +53,33 @@ if st.button("🚀 Generate & View Full Leads"):
     else:
         model = get_engine(api_key)
         if model:
-            with st.spinner("🔍 Connecting to Google AI... (Respecting Rate Limits)"):
+            with st.spinner("🔍 Mining detailed leads... (Stable V1 Path Active)"):
                 prompt = f"""
                 Act as a B2B Sales Expert. Find 10 REAL and ACTIVE businesses in {region} for {target_client}.
                 They must be potential buyers for {my_product}.
-                Format ONLY as a pipe-separated table:
+                Return ONLY a pipe-separated table:
                 Agency Name | Full Address | Website URL | Email ID | Phone Number | Decision Maker Role | Name of Person
                 """
                 
-                # --- AUTO-RETRY LOGIC ---
+                # --- QUOTA & 404 RETRY LOGIC ---
                 response = None
-                success = False
-                for attempt in range(3):
+                for attempt in range(2):
                     try:
                         response = model.generate_content(prompt)
-                        success = True
                         break
                     except Exception as e:
-                        if "429" in str(e) or "ResourceExhausted" in str(e):
-                            st.warning(f"⚠️ API is busy. Retrying in 15 seconds... (Attempt {attempt+1}/3)")
-                            time.sleep(15) # Wait for the minute-limit to reset
+                        if "429" in str(e):
+                            time.sleep(10)
                         else:
-                            st.error(f"❌ Connection Error: {e}")
+                            st.error(f"API Error: {e}")
                             break
 
-                if success and response:
+                if response:
                     lines = response.text.split('\n')
                     lead_data = []
                     
-                    # Visible Table Structure
                     html_table = "<table style='width:100%; border-collapse: collapse; font-family: Arial; font-size: 13px;'>"
-                    html_table += "<tr style='background-color: #004a99; color: white;'><th>Business</th><th>Website</th><th>Email (Compose)</th><th>WhatsApp (Shoot)</th><th>LinkedIn</th></tr>"
+                    html_table += "<tr style='background-color: #004a99; color: white;'><th>Business Details</th><th>Website</th><th>Email (Shoot)</th><th>WhatsApp</th><th>LinkedIn</th></tr>"
 
                     for line in lines:
                         if '|' in line and 'Agency' not in line and '---' not in line:
@@ -83,7 +89,7 @@ if st.button("🚀 Generate & View Full Leads"):
                             name, addr, web, email, phone, role, person = cols[0], cols[1], cols[2], cols[3], cols[4], cols[5], cols[6]
                             lead_data.append([name, addr, web, email, phone, role, person])
                             
-                            # Outreach Links
+                            # Links with Laptop/Mobile fix
                             wa_msg = f"Hello {person}, from Samketan regarding {my_product}. {strategy_note}"
                             clean_phone = "".join(filter(str.isdigit, phone))
                             if len(clean_phone) == 10: clean_phone = "91" + clean_phone
@@ -97,7 +103,7 @@ if st.button("🚀 Generate & View Full Leads"):
                                 <td style='border: 1px solid #ddd; padding: 10px;'><b>{name}</b><br><small>{addr}</small></td>
                                 <td style='border: 1px solid #ddd; padding: 10px;'><a href='{web}' target='_blank'>{web}</a></td>
                                 <td style='border: 1px solid #ddd; padding: 10px;'><b><a href='{mail_link}'>{email}</a></b></td>
-                                <td style='border: 1px solid #ddd; padding: 10px;'><a href='{wa_link}' target='_blank' style='color: #25D366;'>{phone} [Shoot]</a></td>
+                                <td style='border: 1px solid #ddd; padding: 10px;'><a href='{wa_link}' target='_blank' style='color: #25D366; font-weight: bold;'>{phone} [Shoot]</a></td>
                                 <td style='border: 1px solid #ddd; padding: 10px;'><b>{person}</b><br><a href='{li_link}' target='_blank' style='color: #0a66c2;'>View Profile</a></td>
                             </tr>"""
                     
@@ -106,3 +112,7 @@ if st.button("🚀 Generate & View Full Leads"):
                     
                     df = pd.DataFrame(lead_data, columns=["Name", "Address", "Web", "Email", "Phone", "Role", "Person"])
                     st.download_button("📥 Download Organized Excel", data=df.to_csv(index=False).encode('utf-8'), file_name="leads.csv")
+
+# --- FOOTER ---
+st.markdown("---")
+st.caption("Samketan Engine v3.3 | Stable Model Discovery Active")
