@@ -5,22 +5,25 @@ import urllib.parse
 # --- PAGE SETUP ---
 st.set_page_config(page_title="Samketan Business Growth Engine", page_icon="📈", layout="wide")
 
-# --- API KEY CONFIGURATION ---
-# Looks for the key in Secrets, but lets you paste it in the sidebar if Secrets fail.
-api_key = st.secrets.get("GOOGLE_API_KEY", "")
-
+# --- 1. SIDEBAR: AUTHENTICATION & PROFILE ---
 with st.sidebar:
     st.header("🔑 Authentication")
-    if not api_key:
-        api_key = st.text_input("Paste Google API Key here", type="password")
-    else:
+    # This checks Streamlit Secrets first; if empty, it shows the text box
+    api_key_input = st.secrets.get("GOOGLE_API_KEY", "")
+    
+    if not api_key_input:
+        api_key_input = st.text_input("Paste Google API Key here", type="password")
+    
+    if api_key_input:
         st.success("API Key loaded! ✅")
+    else:
+        st.warning("Please enter your API Key to proceed.")
 
     st.header("🏢 Your Company Profile")
     my_company_desc = st.text_area("Describe your company & services", 
         placeholder="e.g., Samketan: We provide high-end Warehouse Storage solutions...")
 
-# --- MAIN DASHBOARD ---
+# --- 2. MAIN DASHBOARD ---
 st.header("🚀 Samketan Business Growth Engine")
 
 # THE 4 QUESTIONS
@@ -32,16 +35,17 @@ with col2:
     target_client = st.text_input("2) Who is your client?", placeholder="e.g., Dal Mills")
     scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
 
-# --- THE DATA ENGINE ---
+# --- 3. DATA ENGINE ---
 if st.button("🚀 Generate 10 Pro Leads"):
-    if not api_key:
-        st.error("❌ Please provide an API Key in the sidebar.")
+    if not api_key_input:
+        st.error("❌ API Key not found. Please check the sidebar.")
     elif not my_company_desc:
-        st.warning("⚠️ Please fill in your Company Profile first.")
+        st.warning("⚠️ Please fill in your Company Profile in the sidebar first.")
     else:
         try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash') # Stable workhorse model
+            # THIS CONNECTS THE KEY TO THE ENGINE
+            genai.configure(api_key=api_key_input)
+            model = genai.GenerativeModel('gemini-1.5-flash')
 
             with st.spinner("🔍 Mining 10 leads with direct links..."):
                 prompt = f"""
@@ -54,7 +58,7 @@ if st.button("🚀 Generate 10 Pro Leads"):
                 response = model.generate_content(prompt)
                 lines = response.text.split('\n')
                 
-                # HTML TABLE GENERATION
+                # PROCESSING THE TABLE
                 html_table = "<table style='width:100%; border-collapse: collapse; font-family: Arial; font-size: 13px;'>"
                 
                 for i, line in enumerate(lines):
@@ -66,10 +70,11 @@ if st.button("🚀 Generate 10 Pro Leads"):
                             html_table += "<tr>" + "".join([f"<th style='border: 1px solid #ddd; padding: 10px; background-color: #f8f9fa;'>{c}</th>" for c in cols]) + "</tr>"
                         else:
                             name, addr, web, email, phone, link, person = cols[0], cols[1], cols[2], cols[3], cols[4], cols[5], cols[6]
+                            
                             web_click = web if web.startswith("http") else f"http://{web}"
                             li_click = f"https://www.linkedin.com/search/results/all/?keywords={urllib.parse.quote(person + ' ' + name)}"
                             
-                            # WhatsApp Icon & Link
+                            # WhatsApp logic
                             wa_msg = f"Hello {person}, I am reaching out from {my_company_desc} regarding {my_product}."
                             clean_phone = "".join(filter(str.isdigit, phone))
                             if len(clean_phone) == 10: clean_phone = "91" + clean_phone
@@ -91,4 +96,4 @@ if st.button("🚀 Generate 10 Pro Leads"):
                 st.download_button("📥 Download CSV", data=response.text, file_name="samketan_leads.csv")
 
         except Exception as e:
-            st.error(f"❌ Error: {e}")
+            st.error(f"❌ Gemini Error: {e}")
