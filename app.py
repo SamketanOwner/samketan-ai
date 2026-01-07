@@ -11,13 +11,21 @@ st.set_page_config(page_title="Samketan Business Growth Engine", page_icon="🚀
 # Auto-login from secrets or manual entry
 api_key = st.secrets.get("GOOGLE_API_KEY") or st.sidebar.text_input("Paste Google API Key", type="password").strip()
 
+# --- 1. KEY & MODEL STABILITY SETUP ---
 def get_engine(key):
     try:
-        genai.configure(api_key=key)
-        # Using 1.5-flash for the 1500/day higher quota limit
-        return genai.GenerativeModel('gemini-1.5-flash')
+        genai.configure(api_key=key.strip())
+        # This asks the API for a list of all models you are allowed to use
+        available_models = [m.name for m in genai.list_models() 
+                           if 'generateContent' in m.supported_generation_methods]
+        
+        # Priority list: It checks what's actually online for your key
+        priority = ['models/gemini-2.5-flash', 'models/gemini-1.5-flash']
+        selected = next((m for m in priority if m in available_models), available_models[0])
+        
+        return genai.GenerativeModel(selected)
     except Exception as e:
-        st.error(f"Engine Error: {e}")
+        st.error(f"❌ Connection Error: {e}")
         return None
 
 # --- SIDEBAR: COMPANY STRATEGY ---
