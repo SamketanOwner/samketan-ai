@@ -11,6 +11,44 @@ import time
 
 # --- PAGE SETUP ---
 st.set_page_config(page_title="Samketan Business Growth Engine", page_icon="🚀", layout="wide")
+# --- BHOODEVI WAREHOUSE PROMOTION ---
+st.markdown(
+    """
+    <style>
+    .flash-container {
+        background-color: #FFF4E5;
+        padding: 8px;
+        border: 1px solid #FF8C00;
+        border-radius: 5px;
+        margin-bottom: 15px;
+        text-align: center;
+    }
+    .flash-text {
+        color: #D35400;
+        font-weight: bold;
+        font-size: 16px;
+        font-family: sans-serif;
+    }
+    .flash-link {
+        color: #2E86C1;
+        text-decoration: none;
+        font-weight: bold;
+    }
+    </style>
+    
+    <div class="flash-container">
+        <marquee scrollamount="10" direction="left" class="flash-text">
+            📢 <b>AVAILABLE FOR LEASE:</b> Premium 21,000 Sq. Ft. Warehouse in Gulbarga (Kalyana Karnataka). 
+            Ideal for FMCG & Logistics. 
+            <a href="https://bhoodeviwarehouse.netlify.app/" target="_blank" class="flash-link">
+                👉 Click Here to Visit M/s Bhoodevi Warehouse
+            </a>
+        </marquee>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+# ------------------------------------
 
 # --- 1. LOGIN & API SETUP ---
 api_key = st.secrets.get("GOOGLE_API_KEY") or st.sidebar.text_input("Paste Google API Key", type="password").strip()
