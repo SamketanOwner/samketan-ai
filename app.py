@@ -8,7 +8,18 @@ import google.generativeai as genai
 import urllib.parse
 import pandas as pd
 import time
+import extra_streamlit_components as stx
 
+# Initialize the cookie manager
+cookie_manager = stx.CookieManager()
+
+# 1. Try to get the 'saved_user' cookie
+saved_user = cookie_manager.get('samketan_user')
+
+# 2. If cookie exists and user isn't logged in yet, log them in automatically
+if saved_user and not st.session_state.get('authenticated'):
+    st.session_state.authenticated = True
+    st.session_state.current_user = saved_user
 # --- PAGE SETUP ---
 st.set_page_config(page_title="Samketan Business Growth Engine", page_icon="🚀", layout="wide")
 # --- BHOODEVI WAREHOUSE PROMOTION ---
