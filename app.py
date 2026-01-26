@@ -205,6 +205,10 @@ with st.sidebar:
     
     # 3. LOGOUT BUTTON
     if st.button("🚪 Logout from Engine", use_container_width=True):
+        # Delete the cookie from the browser
+        cookie_manager.delete('samketan_user')
+        
+        # Reset the session variables
         st.session_state.authenticated = False
         st.session_state.otp_sent = False
         st.rerun()
