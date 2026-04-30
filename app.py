@@ -35,7 +35,7 @@ st.markdown(
     </style>
     <div class="flash-container">
         <marquee scrollamount="10" direction="left" class="flash-text">
-            📢 <b>AVAILABLE FOR LEASE:</b> Premium 21,000 Sq. Ft. Warehouse in Gulbarga (Kalyana Karnataka). 
+            📢 <b>AVAILABLE FOR LEASE:</b> Premium 21,000 Sq. Ft. Warehouse in Gulbarga. 
             Ideal for FMCG & Logistics. 
             <a href="https://bhoodeviwarehouse.netlify.app/" target="_blank" class="flash-link"> 👉 Click Here to Visit M/s Bhoodevi Warehouse</a>
         </marquee>
@@ -59,11 +59,11 @@ def get_engine(key):
         return None
 
 def get_ai_sales_pitch(product, company, person, role):
-    """LLM Feature: Generates a custom sales strategy."""
+    """LLM Feature: Custom strategy generation."""
     try:
         model = get_engine(api_key)
         if model:
-            prompt = f"Act as a Sales Expert. Provide a 1-sentence WhatsApp ice-breaker and a growth reason for {company} (Contact: {person}, {role}) regarding {product}."
+            prompt = f"Act as a B2B Sales Expert. Provide a 1-sentence WhatsApp ice-breaker and a reason why {company} needs {product}."
             return model.generate_content(prompt).text
     except:
         return "Insight temporarily unavailable."
@@ -72,14 +72,14 @@ def get_ai_sales_pitch(product, company, person, role):
 with st.sidebar:
     st.header("🏢 Samketan Strategy")
     strategy_note = st.text_area("Why Samketan is Best?", 
-        value="We provide premium quality, natural ingredients, and a reliable cold-chain supply with 24/7 support.")
+        value="We provide premium quality, natural ingredients, and a reliable cold-chain supply.")
     
     st.write("---")
     st.header("📖 Knowledge Base (RAG)")
     kb_file = st.file_uploader("Upload Product Specs or Warehouse PDF", type="pdf")
     
     if kb_file:
-        with st.spinner("Reading Knowledge Base..."):
+        with st.spinner("AI is reading your documents..."):
             with open("temp_kb.pdf", "wb") as f: f.write(kb_file.getbuffer())
             loader = PyPDFLoader("temp_kb.pdf")
             chunks = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100).split_documents(loader.load())
@@ -105,7 +105,7 @@ if st.button("🚀 Generate & View Full Leads"):
         model = get_engine(api_key)
         if model:
             with st.spinner("🔍 Mining leads and generating AI insights..."):
-                prompt = f"Find 10 REAL businesses in {region} for {target_client} buying {my_product}. Return pipe-separated table: Agency Name | Full Address | Website URL | Email ID | Phone Number | Decision Maker Role | Person Name"
+                prompt = f"Find 10 REAL businesses in {region} for {target_client} buying {my_product}. Return ONLY pipe-separated table: Agency Name | Full Address | Website URL | Email ID | Phone Number | Decision Maker Role | Person Name"
                 response = model.generate_content(prompt)
                 
                 if response:
@@ -119,21 +119,21 @@ if st.button("🚀 Generate & View Full Leads"):
                             name, addr, web, email, phone, role, person = cols[0:7]
                             lead_data.append(cols[0:7])
                             
-                            # Links logic
-                            wa_msg = f"Hello {person}, from Samketan regarding {my_product}. {strategy_note}"
+                            # Outreach Logic
+                            wa_msg = f"Hello {person}, regarding {my_product}. {strategy_note}"
                             clean_phone = "".join(filter(str.isdigit, phone))
                             if len(clean_phone) == 10: clean_phone = "91" + clean_phone
                             wa_link = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(wa_msg)}"
                             mail_link = f"mailto:{email}?subject=Partnership&body={urllib.parse.quote(wa_msg)}"
                             li_link = f"https://www.linkedin.com/search/results/people/?keywords={urllib.parse.quote(person + ' ' + name)}"
 
-                            # UI Card Rendering
+                            # UI Rendering
                             with st.expander(f"🏢 {name} — {person} ({role})"):
                                 c1, c2 = st.columns([2, 1])
                                 with c1:
                                     st.write(f"📍 **Address:** {addr}")
                                     st.write(f"🌐 **Website:** {web}")
-                                    if st.button(f"🧠 Get AI Strategy for {name}", key=f"ai_{i}"):
+                                    if st.button(f"🧠 AI Strategy for {name}", key=f"ai_{i}"):
                                         st.info(get_ai_sales_pitch(my_product, name, person, role))
                                 with c2:
                                     st.markdown(f"[💬 WhatsApp]({wa_link})")
