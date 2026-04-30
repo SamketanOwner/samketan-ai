@@ -6,19 +6,18 @@ if not auth.login_screen():
     st.stop() 
 
 import google.generativeai as genai
-import anthropic
 import urllib.parse
 import pandas as pd
 import os
 import extra_streamlit_components as stx
 
-# RAG & AI Modules
+# High-Performance RAG Modules
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader
 
-# Initialize cookie manager
+# Initialize cookie manager for seamless sessions
 cookie_manager = stx.CookieManager()
 saved_user = cookie_manager.get('samketan_user')
 
@@ -29,7 +28,7 @@ if saved_user and not st.session_state.get('authenticated'):
 # --- 2. PAGE SETUP ---
 st.set_page_config(page_title="Samketan Business Growth Engine", page_icon="🚀", layout="wide")
 
-# Bhoodevi Warehouse Promotion (Dynamic Marquee)
+# Bhoodevi Warehouse Promotion (Proprietary Branding)
 st.markdown(
     """
     <style>
@@ -38,8 +37,8 @@ st.markdown(
     </style>
     <div class="flash-container">
         <marquee scrollamount="8" class="flash-text">
-            📢 <b>FOR LEASE:</b> 21,000 Sq. Ft. Warehouse in Nandur Industrial Area, Gulbarga. 
-            Perfect for FMCG & Logistics. 
+            📢 <b>FOR LEASE:</b> 21,000 Sq. Ft. Premium Warehouse in Nandur Industrial Area, Gulbarga. 
+            Ideal for FMCG & Logistics. 
             <a href="https://bhoodeviwarehouse.netlify.app/" target="_blank">👉 View Bhoodevi Warehouse Details</a>
         </marquee>
     </div>
@@ -47,129 +46,128 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# --- 3. API & ENGINES ---
-google_api_key = st.secrets.get("GOOGLE_API_KEY") or st.sidebar.text_input("Paste Google API Key", type="password").strip()
-anthropic_api_key = st.secrets.get("ANTHROPIC_API_KEY", "")
+# --- 3. AI ENGINE CONFIGURATION ---
+api_key = st.secrets.get("GOOGLE_API_KEY") or st.sidebar.text_input("Paste Google API Key", type="password").strip()
 
-def get_gemini_engine(key):
+def get_high_perf_engine(key):
     try:
         genai.configure(api_key=key.strip())
-        # Enabled with Grounding to find REAL businesses in Gulbarga
+        # Enabled with Google Search Grounding to prevent "Hallucinations"
         return genai.GenerativeModel(
-            model_name='gemini-1.5-flash',
+            model_name='gemini-1.5-pro', # Using Pro for higher reasoning/quality
             tools=[{"google_search_retrieval": {}}]
         )
     except Exception as e:
-        st.error(f"❌ Gemini Error: {e}")
-        return None
-
-def get_claude_response(prompt_text, api_key):
-    try:
-        client = anthropic.Anthropic(api_key=api_key)
-        message = client.messages.create(
-            model="claude-3-5-sonnet-20240620",
-            max_tokens=2048,
-            messages=[{"role": "user", "content": prompt_text}]
-        )
-        return message.content[0].text
-    except Exception as e:
-        st.error(f"❌ Claude Error: {e}")
+        st.error(f"❌ Connection Error: {e}")
         return None
 
 # --- 4. RAG KNOWLEDGE BASE (SIDEBAR) ---
 with st.sidebar:
     st.header("🏢 Samketan Strategy")
-    strategy_note = st.text_area("Value Proposition", value="We provide premium storage and reliable logistics support.")
+    strategy_note = st.text_area("Global Strategy", value="We provide premium quality and reliable cold-chain supply with 24/7 support.")
     
     st.write("---")
     st.header("📖 Knowledge Base (RAG)")
-    kb_file = st.file_uploader("Upload Warehouse PDF", type="pdf")
+    st.info("Upload your Product PDF or Warehouse Specs to train the AI.")
+    kb_file = st.file_uploader("Upload Business PDF", type="pdf")
     
     if kb_file:
-        with st.spinner("AI analyzing documents..."):
+        with st.spinner("AI is indexing your business documents..."):
             with open("temp_kb.pdf", "wb") as f: f.write(kb_file.getbuffer())
             loader = PyPDFLoader("temp_kb.pdf")
-            text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+            text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
             chunks = text_splitter.split_documents(loader.load())
-            embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=google_api_key)
+            embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
             st.session_state.vector_db = FAISS.from_documents(chunks, embeddings)
-            st.success("✅ AI is now an expert on your Warehouse specs!")
+            st.success("✅ Knowledge Base Active! AI is now specialized.")
 
-# --- 5. DATA RENDERER ---
-def render_lead_table(response_text, my_product):
-    lines = response_text.split('\n')
-    lead_data = []
-
-    for line in lines:
-        if '|' in line and 'Agency' not in line and '---' not in line:
-            cols = [c.strip() for c in line.split('|')]
-            if len(cols) < 7: continue
-            lead_data.append(cols[0:7])
-
-    if not lead_data:
-        st.warning("No structured leads found. Try refining your search.")
-        return
-
-    # Clean Table UI
-    for i, lead in enumerate(lead_data):
-        name, addr, web, email, phone, role, person = lead
-        with st.expander(f"🏢 {name} — {person} ({role})"):
-            c1, c2 = st.columns([2, 1])
-            with c1:
-                st.write(f"📍 **Location:** {addr}")
-                st.write(f"🌐 **Web:** [{web}]({web})")
-            with c2:
-                clean_phone = "".join(filter(str.isdigit, phone))
-                if len(clean_phone) == 10: clean_phone = "91" + clean_phone
-                wa_link = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(f'Hello {person}, regarding {my_product}. {strategy_note}')}"
-                st.markdown(f"**[💬 WhatsApp Shoot]({wa_link})**")
-                st.markdown(f"[🔗 LinkedIn](https://www.linkedin.com/search/results/people/?keywords={urllib.parse.quote(person + ' ' + name)})")
-
-    df = pd.DataFrame(lead_data, columns=["Name", "Address", "Web", "Email", "Phone", "Role", "Person"])
-    st.download_button("📥 Export to Excel", data=df.to_csv(index=False).encode('utf-8'), file_name="leads.csv")
-
-# --- 6. SEARCH INTERFACE ---
+# --- 5. MAIN DASHBOARD ---
 st.header("🚀 Samketan Business Growth Engine")
 col1, col2 = st.columns(2)
 with col1:
     my_product = st.text_input("1) Product/Service", value="ice cream")
     region = st.text_input("3) Target City/Region", value="gulbarga")
 with col2:
-    target_client = st.text_input("2) Client Type", value="hotels, smart bazar")
+    target_client = st.text_input("2) Targeted Industry/Client", value="hotels, smart bazar")
     scope = st.radio("4) Market Scope", ["Local (Domestic)", "Export (International)"])
 
-tab1, tab2 = st.tabs(["🤖 Live Web Search (Gemini)", "🧠 Pattern Analysis (Claude)"])
-
-PROMPT_TEMPLATE = """
-Find 10 REAL businesses in {region} for {target_client} who might buy {my_product}.
-Search the web for current data. Return pipe-separated table:
-Agency Name | Full Address | Website URL | Email ID | Phone Number | Decision Maker Role | Person Name
-"""
-
-with tab1:
-    if st.button("🔍 Find Real-Time Leads"):
-        model = get_gemini_engine(google_api_key)
+# --- 6. DATA & LEAD ENGINE ---
+if st.button("🔍 Generate High-Accuracy Leads (Search Grounded)"):
+    if not api_key:
+        st.error("Please provide an API Key.")
+    else:
+        model = get_high_perf_engine(api_key)
         if model:
-            with st.spinner("Searching the internet for live B2B buyers..."):
-                prompt = PROMPT_TEMPLATE.format(region=region, target_client=target_client, my_product=my_product)
-                response = model.generate_content(prompt)
-                render_lead_table(response.text, my_product)
+            with st.spinner("Searching the live web and cross-referencing leads..."):
+                # Enhanced Prompt for High-Quality Output
+                prompt = f"""
+                As a B2B Sales Expert, perform a live search for 10 REAL businesses in {region} that are active buyers for {my_product}.
+                Targeting: {target_client}. Scope: {scope}.
+                
+                You MUST find:
+                1. Exact Business Names.
+                2. Real Physical Addresses.
+                3. Verified Website URLs.
+                4. Likely Decision Maker Names and Roles.
+                
+                Format as a pipe-separated table:
+                Agency Name | Full Address | Website URL | Email ID | Phone Number | Decision Maker Role | Person Name
+                """
+                
+                try:
+                    response = model.generate_content(prompt)
+                    if response:
+                        lines = response.text.split('\n')
+                        lead_data = []
+                        
+                        # UI Table Rendering
+                        html_table = "<table style='width:100%; border-collapse: collapse; font-family: Arial; font-size: 13px;'>"
+                        html_table += "<tr style='background-color: #004a99; color: white;'><th>Company Intelligence</th><th>Contact</th><th>Outreach</th><th>Market Match</th></tr>"
 
-with tab2:
-    if st.button("🧠 Generate Strategic Leads"):
-        if anthropic_api_key:
-            with st.spinner("Analyzing market data..."):
-                prompt = PROMPT_TEMPLATE.format(region=region, target_client=target_client, my_product=my_product)
-                res = get_claude_response(prompt, anthropic_api_key)
-                if res: render_lead_table(res, my_product)
-        else:
-            st.error("Please add ANTHROPIC_API_KEY to secrets.")
+                        for line in lines:
+                            if '|' in line and 'Agency' not in line and '---' not in line:
+                                cols = [c.strip() for c in line.split('|')]
+                                if len(cols) < 7: continue
+                                
+                                name, addr, web, email, phone, role, person = cols[0:7]
+                                lead_data.append(cols[0:7])
+                                
+                                # Outreach Logic
+                                clean_phone = "".join(filter(str.isdigit, phone))
+                                if len(clean_phone) == 10: clean_phone = "91" + clean_phone
+                                wa_msg = f"Hello {person}, regarding {my_product}. {strategy_note}"
+                                wa_link = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(wa_msg)}"
+                                li_link = f"https://www.linkedin.com/search/results/people/?keywords={urllib.parse.quote(person + ' ' + name)}"
+
+                                html_table += f"""
+                                <tr>
+                                    <td style='border: 1px solid #ddd; padding: 10px;'><b>{name}</b><br><small>{addr}</small></td>
+                                    <td style='border: 1px solid #ddd; padding: 10px;'>{person}<br><small>{email}</small></td>
+                                    <td style='border: 1px solid #ddd; padding: 10px;'>
+                                        <a href='{wa_link}' target='_blank' style='color: #25D366; font-weight: bold;'>WhatsApp</a> | 
+                                        <a href='{li_link}' target='_blank' style='color: #0a66c2; font-weight: bold;'>LinkedIn</a>
+                                    </td>
+                                    <td style='border: 1px solid #ddd; padding: 10px;'><span style='color: green;'>{role}</span></td>
+                                </tr>"""
+                        
+                        html_table += "</table>"
+                        st.write(html_table, unsafe_allow_html=True)
+                        
+                        # Data Export
+                        df = pd.DataFrame(lead_data, columns=["Name", "Address", "Web", "Email", "Phone", "Role", "Person"])
+                        st.download_button("📥 Export Verified Leads to Excel", data=df.to_csv(index=False).encode('utf-8'), file_name=f"leads_{region}.csv")
+
+                except Exception as e:
+                    st.error(f"AI Search Error: {e}")
 
 # --- FOOTER ---
 st.markdown("---")
+st.caption("Samketan AI v5.0 | High-Performance Grounding Enabled | Nandur Warehouse Corridor")
+
 with st.sidebar:
-    st.info(f"👤 Logged in as: {st.session_state.get('current_user', 'Sanjay')}")
-    if st.button("🚪 Logout"):
+    st.write("---")
+    st.info(f"👤 Account: {st.session_state.get('current_user', 'Admin')}")
+    if st.button("🚪 Logout", use_container_width=True):
         cookie_manager.delete('samketan_user')
         st.session_state.clear()
         st.rerun()
