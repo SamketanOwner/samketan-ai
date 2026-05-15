@@ -1,59 +1,85 @@
 import streamlit as st
-import auth  # Your existing login logic
+import auth  # Your auth logic
 import google.generativeai as genai
 import anthropic
 from openai import OpenAI
 import urllib.parse
 import pandas as pd
-import os
 import extra_streamlit_components as stx
 
-# --- 1. AUTHENTICATION GATE ---
+# --- 1. AUTHENTICATION & SECURITY ---
 if not auth.login_screen():
     st.stop() 
 
-# --- 2. ENGINE CONFIGURATION ---
+cookie_manager = stx.CookieManager()
+saved_user = cookie_manager.get('samketan_user')
+if saved_user and not st.session_state.get('authenticated'):
+    st.session_state.authenticated = True
+    st.session_state.current_user = saved_user
+
+# --- 2. PAGE SETUP ---
 st.set_page_config(page_title="Samketan AI v6.0", page_icon="🚀", layout="wide")
 
-# API Keys from Secrets
+st.markdown(
+    """
+    <style>
+    .flash-container { background-color: #FFF4E5; padding: 10px; border: 1px solid #FF8C00; border-radius: 5px; margin-bottom: 15px; text-align: center; }
+    .flash-text { color: #D35400; font-weight: bold; font-size: 16px; }
+    </style>
+    <div class="flash-container">
+        <marquee scrollamount="8" class="flash-text">
+            📢 <b>BHOODEVI WAREHOUSE:</b> 21,000 Sq. Ft. Premium Space in Gulbarga for Lease. 
+            <a href="https://bhoodeviwarehouse.netlify.app/" target="_blank">👉 View Details</a>
+        </marquee>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+# --- 3. THE TRIPLE-AGENT ORCHESTRATOR ---
 google_key = st.secrets.get("GOOGLE_API_KEY")
 anthropic_key = st.secrets.get("ANTHROPIC_API_KEY")
 openai_key = st.secrets.get("OPENAI_API_KEY")
 
-# Initialize Clients
-def get_gemini():
-    genai.configure(api_key=google_key)
-    return genai.GenerativeModel(model_name='gemini-1.5-flash', tools=[{"google_search_retrieval": {}}])
+def get_best_gemini_model(api_key):
+    genai.configure(api_key=api_key)
+    # This automatically finds the newest model that works on your account
+    available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    # Priority list for 2026
+    priority = ['models/gemini-3-flash-preview', 'models/gemini-3-flash', 'models/gemini-1.5-flash']
+    for p in priority:
+        if p in available_models:
+            return genai.GenerativeModel(model_name=p, tools=[{"google_search_retrieval": {}}])
+    return genai.GenerativeModel(model_name=available_models[0])
 
-def get_claude():
-    return anthropic.Anthropic(api_key=anthropic_key)
-
-def get_gpt():
-    return OpenAI(api_key=openai_key)
-
-# --- 3. THE TRIPLE-AGENT ORCHESTRATOR ---
-def run_orchestrator(product, region, client_type):
+def run_triple_agent_search(product, region, client_type):
     try:
-        # AGENT 1: Gemini (The Searcher)
-        st.write("🔍 **Gemini** is searching for genuine contacts...")
-        gemini = get_gemini()
-        search_prompt = f"Find 5 REAL business leads in {region} for {client_type} who need {product}. Provide: Name, Company, Website, and Email/Phone if public."
+        # AGENT 1: Gemini (The Researcher)
+        st.write("🔍 **Gemini Searcher** is scouring the web for live contacts...")
+        gemini = get_best_gemini_model(google_key)
+        
+        search_prompt = f"""Find 5 REAL business leads in {region} for {client_type} who buy {product}.
+        Provide: Name, Company, Website, and Public Email/Phone. CITE YOUR SOURCES."""
         search_res = gemini.generate_content(search_prompt).text
         
         # AGENT 2: Claude (The Analyst)
-        st.write("🧠 **Claude** is verifying genuineness and scoring leads...")
-        claude = get_claude()
-        analysis_prompt = f"Analyze these leads: {search_res}. Score them 1-100 on 'Business Likelihood'. Check if their websites look professional. Provide a short Rationale for each."
+        st.write("🧠 **Claude Analyst** is verifying genuineness and assessing risk...")
+        claude = anthropic.Anthropic(api_key=anthropic_key)
+        analysis_prompt = f"""Analyze these leads: {search_res}. 
+        Perform a 'BS-Check': Do these companies look real? Is the contact likely a decision maker? 
+        Rate 'Business Likelihood' 1-100. Be critical."""
         analysis_res = claude.messages.create(
             model="claude-3-5-sonnet-20240620",
             max_tokens=1000,
             messages=[{"role": "user", "content": analysis_prompt}]
         ).content[0].text
         
-        # AGENT 3: ChatGPT (The Composer)
-        st.write("✉️ **ChatGPT** is composing personalized outreach...")
-        gpt = get_gpt()
-        outreach_prompt = f"Based on Claude's analysis: {analysis_res}, write 1 professional Email and 1 friendly WhatsApp for the top lead. Focus on this value: 'Premium 21,000 sq ft warehouse space in Nandur'."
+        # AGENT 3: ChatGPT (The Communicator)
+        st.write("✉️ **ChatGPT Composer** is drafting human-like outreach...")
+        gpt = OpenAI(api_key=openai_key)
+        outreach_prompt = f"""Based on Claude's analysis: {analysis_res}, 
+        write 1 professional Email and 1 friendly WhatsApp for the best lead. 
+        Focus on value: 'Premium 21,000 sq ft RCC warehouse in Nandur Area'."""
         outreach_res = gpt.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": outreach_prompt}]
@@ -61,38 +87,40 @@ def run_orchestrator(product, region, client_type):
         
         return search_res, analysis_res, outreach_res
     except Exception as e:
-        st.error(f"Orchestration Error: {e}")
+        st.error(f"❌ Orchestration Error: {e}")
         return None, None, None
 
 # --- 4. USER INTERFACE ---
-st.header("🚀 Samketan AI v6.0: Triple-Agent Orchestrator")
-
-# Branding
-st.info("📢 Available: 21,000 Sq. Ft. Warehouse in Gulbarga. [Visit Site](https://bhoodeviwarehouse.netlify.app/)")
+st.header("🚀 Samketan AI v6.1: Triple-Agent Orchestrator")
 
 col1, col2 = st.columns(2)
 with col1:
-    prod = st.text_input("Product/Service", value="Warehouse Leasing")
-    loc = st.text_input("Region", value="Gulbarga")
+    prod = st.text_input("1) What are you selling?", value="Warehouse Space")
+    loc = st.text_input("3) Target City/Region", value="Gulbarga")
 with col2:
-    target = st.text_input("Client Type", value="FMCG Distributors")
+    target = st.text_input("2) Who is your ideal client?", value="FMCG Distributors")
 
-if st.button("🔥 Run Multi-Agent Search"):
+if st.button("🔥 RUN TRIPLE-AGENT ENGINE"):
     if not (google_key and anthropic_key and openai_key):
-        st.error("Missing API Keys in Secrets!")
+        st.error("⚠️ Error: Missing API Keys. Please check your Streamlit Secrets.")
     else:
-        with st.spinner("Agents are coordinating..."):
-            raw, analysis, outreach = run_orchestrator(prod, loc, target)
-            
+        with st.spinner("AI Agents are coordinating..."):
+            raw, analysis, outreach = run_triple_agent_search(prod, loc, target)
             if raw:
-                t1, t2, t3 = st.tabs(["📡 Gemini Research", "🔬 Claude Audit", "✍️ GPT Outreach"])
+                st.success("✅ Workflow Complete!")
+                t1, t2, t3 = st.tabs(["📡 1. Gemini Research", "🔬 2. Claude Audit", "✍️ 3. GPT Outreach"])
                 with t1: st.markdown(raw)
                 with t2: st.markdown(analysis)
                 with t3: st.markdown(outreach)
 
-# --- 5. FOOTER ---
+# --- 5. SIDEBAR & FOOTER ---
+with st.sidebar:
+    st.header("🏢 Profile")
+    st.info(f"👤 Logged in: {st.session_state.get('current_user', 'Sanjay')}")
+    if st.button("🚪 Logout"):
+        cookie_manager.delete('samketan_user')
+        st.session_state.clear()
+        st.rerun()
+
 st.sidebar.markdown("---")
-st.sidebar.caption("v6.0 | Gemini + Claude + GPT-4o")
-if st.sidebar.button("Logout"):
-    st.session_state.clear()
-    st.rerun()
+st.sidebar.caption("Samketan AI v6.1 | Smart Model Auto-Select Enabled")
