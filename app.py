@@ -421,10 +421,8 @@ RULES:
     response = model.generate_content(prompt)
     return response.text, selected
 
-# ─────────────────────────────────────────────
-# PHASE 2: OPENROUTER STRATEGIST (FREE REPLACEMENT FOR CLAUDE) 
-# ─────────────────────────────────────────────
-    with pipeline_status_placeholder.container():
+# ── PHASE 2: OPENROUTER STRATEGIST (FREE REPLACEMENT FOR CLAUDE) ─────────────────────────
+        with pipeline_status_placeholder.container():
             show_agent_pipeline({"gemini": "done", "claude": "running", "gpt": "idle", "auto": "idle"})
 
         st.markdown("""
@@ -439,14 +437,12 @@ RULES:
 
         with st.spinner("🧠 OpenRouter is strategizing for each lead ($0 Cost)..."):
             try:
-                # Surgical replacement: Calling OpenRouter proxy with a high-capacity free model instead of paid Anthropic
                 from openai import OpenAI
                 or_client = OpenAI(
                     base_url="https://openrouter.ai/api/v1",
                     api_key=st.secrets.get("OPENROUTER_API_KEY")
                 )
                 
-                # Reconstructing your input parameter flow safely into a structured prompt
                 analysis_prompt = f"""
                 You are a senior business growth strategist. Analyze the raw lead dataset below and extract strategic matching insights.
                 
@@ -473,7 +469,6 @@ RULES:
                 - "recommended_approach" (string text)
                 """
 
-                # Triggering OpenRouter's free thinking system
                 response = or_client.chat.completions.create(
                     model="openrouter/free",
                     messages=[{"role": "user", "content": analysis_prompt}]
@@ -485,7 +480,6 @@ RULES:
 
                 st.success(f"✅ OpenRouter analyzed {len(strategy_list)} leads with strategic scoring")
 
-                # Display strategy cards (Your entire design remains identical)
                 if strategy_list:
                     for s in strategy_list:
                         priority = s.get('priority', 'WARM')
