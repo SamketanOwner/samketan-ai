@@ -27,7 +27,14 @@ st.set_page_config(
     page_icon="S",
     layout="wide"
 )
-
+# Hide deploy button and toolbar
+st.markdown("""
+<style>
+[data-testid="stToolbar"] { display: none !important; }
+[data-testid="stDecoration"] { display: none !important; }
+[data-testid="stStatusWidget"] { display: none !important; }
+</style>
+""", unsafe_allow_html=True)
 # ---------------------------------------------
 # GLOBAL CSS
 # ---------------------------------------------
