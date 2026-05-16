@@ -299,13 +299,33 @@ Simulates client reply and generates follow-up
 # ---------------------------------------------
 # HELPER: GET GEMINI MODEL
 # ---------------------------------------------
+import time
+
 def get_gemini_model():
     genai.configure(api_key=gemini_key.strip())
     available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-    # gemini-1.5-flash = 1500 req/day FREE (gemini-2.5-flash = only 20/day free)
-    priority  = ['models/gemini-1.5-flash', 'models/gemini-2.0-flash', 'models/gemini-1.5-pro']
+    priority  = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro']
     selected  = next((m for m in priority if m in available), available[0])
     return genai.GenerativeModel(selected), selected
+
+def call_gemini_with_retry(model, prompt, retries=3, wait=45):
+    for attempt in range(retries):
+        try:
+            return model.generate_content(prompt)
+        except Exception as e:
+            err = str(e)
+            if '429' in err:
+                if attempt < retries - 1:
+                    st.warning(
+                        "Rate limit hit. Waiting " + str(wait) +
+                        " seconds before retry " + str(attempt + 2) +
+                        " of " + str(retries) + "..."
+                    )
+                    time.sleep(wait)
+                else:
+                    raise e
+            else:
+                raise e
 
 # ---------------------------------------------
 # HELPER: SAFE JSON PARSE
