@@ -1076,20 +1076,23 @@ Format as JSON: {{"whatsapp_reply": "...", "email_reply": "...", "next_step": ".
                 manual_data = safe_json_parse(manual_res.choices[0].message.content, {})
 
                 if manual_data:
-                    st.markdown(f"""
-                    <div class="autoreply-box">
-                        <div class="autoreply-label">💬 WhatsApp Auto-Reply for {reply_company}</div>
-                        <div class="autoreply-text">{manual_data.get('whatsapp_reply', '')}</div>
-                    </div>
-                    <div class="msg-box msg-email">
-                        <div class="msg-label msg-label-mail">📧 Email Auto-Reply</div>
-                        <div class="msg-content">{manual_data.get('email_reply', '')}</div>
-                    </div>
-                    <div style="background:#0a0d14;border:1px solid #1e2a3e;border-radius:8px;padding:12px 16px;margin-top:10px;">
-                        <p style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">📋 Recommended Next Step</p>
-                        <p style="color:#b0bec5;font-size:0.84rem;">{manual_data.get('next_step', '')}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+    wa_reply   = manual_data.get('whatsapp_reply', '')
+    em_reply   = manual_data.get('email_reply', '')
+    next_step  = manual_data.get('next_step', '')
+    st.markdown(f"""
+    <div class="autoreply-box">
+        <div class="autoreply-label">WhatsApp Auto-Reply for {reply_company}</div>
+        <div class="autoreply-text">{wa_reply}</div>
+    </div>
+    <div class="msg-box msg-email">
+        <div class="msg-label msg-label-mail">Email Auto-Reply</div>
+        <div class="msg-content">{em_reply}</div>
+    </div>
+    <div style="background:#0a0d14;border:1px solid #1e2a3e;border-radius:8px;padding:12px 16px;margin-top:10px;">
+        <p style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Recommended Next Step</p>
+        <p style="color:#b0bec5;font-size:0.84rem;">{next_step}</p>
+    </div>
+    """, unsafe_allow_html=True)
 
             except Exception as e:
                 st.error(f"❌ Manual reply error: {e}")
