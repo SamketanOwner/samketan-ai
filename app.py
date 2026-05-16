@@ -1014,10 +1014,40 @@ if simulate_reply and st.session_state.pipeline_results:
     reply_company = st.text_input("Which company replied?", placeholder="Company name...")
 
     if st.button("🤖 Generate Smart Auto-Reply") and client_reply_input:
-        with st.spinner("Generating intelligent response..."):
-            try:
-                gpt_client = OpenAI(api_key=openai_key.strip())
-                manual_prompt = f"""You are the sales AI for {our_company}.
+      with st.spinner("Generating intelligent response..."):
+    try:
+        genai.configure(api_key=gemini_key.strip())
+        available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        priority  = ['models/gemini-2.5-flash', 'models/gemini-2.0-flash', 'models/gemini-1.5-flash']
+        selected  = next((m for m in priority if m in available), available[0])
+        gem_model = genai.GenerativeModel(selected)
+
+        manual_prompt = f"""You are the sales AI for {our_company}.
+
+OUR OFFERING: {our_product}
+TONE: {reply_tone}
+COMPANY THAT REPLIED: {reply_company}
+
+CLIENT REPLIED: "{client_reply_input}"
+
+Write a professional, helpful response that:
+1. Directly addresses their message
+2. Provides relevant details from our offering
+3. Moves toward scheduling a site visit or call
+4. Is warm and not pushy
+
+CRITICAL: Return ONLY a valid JSON object. No markdown. No backticks. No explanation.
+The object MUST have these exact keys:
+- "whatsapp_reply" (string)
+- "email_reply" (string)
+- "next_step" (string)
+
+Start your response with {{ and end with }}"""
+
+        manual_res  = gem_model.generate_content(manual_prompt)
+        manual_data = safe_json_parse(manual_res.text, {})         
+                
+               
 
 OUR OFFERING: {our_product}
 TONE: {reply_tone}
