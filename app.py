@@ -301,14 +301,22 @@ Simulates client reply and generates follow-up
 # ---------------------------------------------
 import time
 
+# ---------------------------------------------
+# HELPER: GET GEMINI MODEL (1.5-flash = 1500/day free)
+# ---------------------------------------------
 def get_gemini_model():
     genai.configure(api_key=gemini_key.strip())
-    available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-    priority  = ['models/gemini-1.5-flash', 'models/gemini-1.5-pro']
-    selected  = next((m for m in priority if m in available), available[0])
-    return genai.GenerativeModel(selected), selected
+    # HARDCODED to 1.5-flash - DO NOT change order
+    # gemini-2.5-flash = 20/day, gemini-2.0-flash = 200/day
+    # gemini-1.5-flash = 1500/day FREE - always use this
+    model    = genai.GenerativeModel('gemini-1.5-flash')
+    selected = 'models/gemini-1.5-flash'
+    return model, selected
 
-def call_gemini_with_retry(model, prompt, retries=3, wait=45):
+# ---------------------------------------------
+# HELPER: CALL GEMINI WITH AUTO-RETRY ON 429
+# ---------------------------------------------
+def call_gemini_with_retry(model, prompt, retries=3, wait=60):
     for attempt in range(retries):
         try:
             return model.generate_content(prompt)
@@ -316,14 +324,17 @@ def call_gemini_with_retry(model, prompt, retries=3, wait=45):
             err = str(e)
             if '429' in err:
                 if attempt < retries - 1:
+                    remaining = retries - attempt - 1
                     st.warning(
-                        "Rate limit hit. Waiting " + str(wait) +
-                        " seconds before retry " + str(attempt + 2) +
-                        " of " + str(retries) + "..."
+                        "Rate limit hit. Auto-retrying in " + str(wait) +
+                        " seconds... (" + str(remaining) + " retries left)"
                     )
                     time.sleep(wait)
                 else:
-                    raise e
+                    raise Exception(
+                        "All retries exhausted. Please wait a few minutes and try again, "
+                        "or create a new Google API key at https://aistudio.google.com/apikey"
+                    )
             else:
                 raise e
 
