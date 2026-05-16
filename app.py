@@ -1106,6 +1106,6 @@ elif simulate_reply and not st.session_state.pipeline_results:
 st.markdown("---")
 st.markdown("""
 <p style="color:#2a3a4e;font-size:0.8rem;text-align:center;">
-    Samketan AI v7.0 · Multi-Agent Autonomous Pipeline · Gemini Scout → Claude Strategist → GPT Communicator → Auto-Responder · © 2026 Samketan
+    Samketan AI v7.0 | Multi-Agent Autonomous Pipeline | Gemini Scout | Gemini Strategist | Gemini Communicator | Gemini Auto-Responder | &copy; 2026 Samketan
 </p>
 """, unsafe_allow_html=True)
