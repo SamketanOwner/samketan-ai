@@ -441,7 +441,7 @@ with st.spinner("🧠 OpenRouter is strategizing for each lead ($0 Cost)..."):
     try:
         from openai import OpenAI
         or_client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
+            base_url="[https://openrouter.ai/api/v1](https://openrouter.ai/api/v1)",
             api_key=st.secrets.get("OPENROUTER_API_KEY")
         )
         
@@ -462,7 +462,7 @@ with st.spinner("🧠 OpenRouter is strategizing for each lead ($0 Cost)..."):
         Specific Product Target: {my_product}
         Required Outreach Tone: {reply_tone}
         
-        CRITICAL INSTRUCTION: Return your response ONLY as a clean, machine-readable JSON array of objects. Do not wrap it in markdown codeblocks (no ```json).
+        CRITICAL INSTRUCTION: Return your response ONLY as a valid JSON array of objects.
         Each object in the JSON array MUST contain these exact text keys:
         - "company" (string)
         - "contact_person" (string)
@@ -484,24 +484,27 @@ with st.spinner("🧠 OpenRouter is strategizing for each lead ($0 Cost)..."):
         
         strategy_raw = response.choices[0].message.content
         
-        # Clean up and load JSON data safely
+        # Robust Substring JSON Parser: Isolates the JSON array safely from conversational text
         import json
+        strategy_list = []
         try:
             clean_raw = strategy_raw.strip()
-            if clean_raw.startswith("```json"):
-                clean_raw = clean_raw.split("```json")[1].split("```")[0].strip()
-            elif clean_raw.startswith("```"):
-                clean_raw = clean_raw.split("```")[1].split("```")[0].strip()
+            # Find where the actual JSON array bracket begins and ends
+            start_idx = clean_raw.find("[")
+            end_idx = clean_raw.rfind("]") + 1
+            
+            if start_idx != -1 and end_idx != 0:
+                clean_raw = clean_raw[start_idx:end_idx]
+            
             strategy_list = json.loads(clean_raw)
         except Exception:
             strategy_list = []     
             
-        # This will now succeed perfectly with zero item assignment errors
+        # Commit safely into pipeline state memory
         st.session_state.pipeline_results['strategy'] = strategy_list
 
-        st.success(f"✅ OpenRouter analyzed {len(strategy_list)} leads with strategic scoring")
-
         if strategy_list:
+            st.success(f"✅ OpenRouter analyzed {len(strategy_list)} leads with strategic scoring")
             for s in strategy_list:
                 priority = s.get('priority', 'WARM')
                 badge_class = 'badge-hot' if priority == 'HOT' else ('badge-cold' if priority == 'COLD' else 'badge-warm')
@@ -544,6 +547,7 @@ with st.spinner("🧠 OpenRouter is strategizing for each lead ($0 Cost)..."):
                 </div>
                 """, unsafe_allow_html=True)
         else:
+            st.warning("⚠️ Could not compile standard strategy cards. Reviewing raw data stream:")
             with st.expander("📄 Raw OpenRouter Strategy Output"):
                 st.text(strategy_raw)
 
