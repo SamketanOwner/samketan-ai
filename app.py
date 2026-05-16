@@ -421,139 +421,49 @@ RULES:
     response = model.generate_content(prompt)
     return response.text, selected
 pipeline_status_placeholder = st.empty()
-# ──────────────────────────────────────────────────────────────────────
-# AGENT 2: OPENROUTER STRATEGIST (FREE REPLACEMENT FOR CLAUDE)
-# ──────────────────────────────────────────────────────────────────────
-with pipeline_status_placeholder.container():
-    show_agent_pipeline({"gemini": "done", "claude": "running", "gpt": "idle", "auto": "idle"})
+# ─────────────────────────────────────────────
+# AGENT 2: OPENROUTER / CLAUDE STRATEGIST
+# ─────────────────────────────────────────────
+def agent_claude_strategist(raw_leads_data, our_product, our_company, my_product, reply_tone):
+    """OpenRouter strategizes for each lead (free, replaces Claude direct API)"""
+    from openai import OpenAI
+    or_client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=st.secrets.get("OPENROUTER_API_KEY", "")
+    )
 
-st.markdown("""
-<div class="phase-header phase-claude">
-    <span style="font-size:1.5rem">🧠</span>
-    <div>
-        <p class="phase-title">Phase 2: OpenRouter Strategist — Deep Analysis & Personalization</p>
-        <p class="phase-sub">Analysing each lead's business, pain points & crafting targeted strategy</p>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+    analysis_prompt = f"""You are a senior business growth strategist. Analyze the raw lead dataset below and extract strategic matching insights.
 
-with st.spinner("🧠 OpenRouter is strategizing for each lead ($0 Cost)..."):
-    try:
-        from openai import OpenAI
-        or_client = OpenAI(
-            base_url="[https://openrouter.ai/api/v1](https://openrouter.ai/api/v1)",
-            api_key=st.secrets.get("OPENROUTER_API_KEY")
-        )
-        
-        # Safety Guardrail: Re-initialize pipeline_results if Streamlit cleared it
-        if st.session_state.get('pipeline_results') is None:
-            st.session_state.pipeline_results = {}
-            
-        raw_leads_data = st.session_state.pipeline_results.get('gemini_raw', 'No raw lead data found.')
-        
-        analysis_prompt = f"""
-        You are a senior business growth strategist. Analyze the raw lead dataset below and extract strategic matching insights.
-        
-        Raw Leads Data from Gemini:
-        {raw_leads_data}
-        
-        Our Company Identity: {our_company}
-        Our Product/Service Offer: {our_product}
-        Specific Product Target: {my_product}
-        Required Outreach Tone: {reply_tone}
-        
-        CRITICAL INSTRUCTION: Return your response ONLY as a valid JSON array of objects.
-        Each object in the JSON array MUST contain these exact text keys:
-        - "company" (string)
-        - "contact_person" (string)
-        - "deal_score" (integer, 1-100)
-        - "priority" (string uppercase: either 'HOT', 'WARM', or 'COLD')
-        - "our_value_prop" (string text)
-        - "pain_points" (list of strings)
-        - "opening_hook" (string text)
-        - "objection_handling" (string text)
-        - "estimated_value" (string text)
-        - "urgency_signal" (string text)
-        - "recommended_approach" (string text)
-        """
+Raw Leads Data from Gemini:
+{raw_leads_data}
 
-        response = or_client.chat.completions.create(
-            model="openrouter/free",
-            messages=[{"role": "user", "content": analysis_prompt}]
-        )
-        
-        strategy_raw = response.choices[0].message.content
-        
-        # Robust Substring JSON Parser: Isolates the JSON array safely from conversational text
-        import json
-        strategy_list = []
-        try:
-            clean_raw = strategy_raw.strip()
-            # Find where the actual JSON array bracket begins and ends
-            start_idx = clean_raw.find("[")
-            end_idx = clean_raw.rfind("]") + 1
-            
-            if start_idx != -1 and end_idx != 0:
-                clean_raw = clean_raw[start_idx:end_idx]
-            
-            strategy_list = json.loads(clean_raw)
-        except Exception:
-            strategy_list = []     
-            
-        # Commit safely into pipeline state memory
-        st.session_state.pipeline_results['strategy'] = strategy_list
+Our Company Identity: {our_company}
+Our Product/Service Offer: {our_product}
+Specific Product Target: {my_product}
+Required Outreach Tone: {reply_tone}
 
-        if strategy_list:
-            st.success(f"✅ OpenRouter analyzed {len(strategy_list)} leads with strategic scoring")
-            for s in strategy_list:
-                priority = s.get('priority', 'WARM')
-                badge_class = 'badge-hot' if priority == 'HOT' else ('badge-cold' if priority == 'COLD' else 'badge-warm')
-                badge_icon  = '🔥' if priority == 'HOT' else ('❄️' if priority == 'COLD' else '🌡️')
+CRITICAL INSTRUCTION: Return your response ONLY as a valid JSON array of objects.
+Each object in the JSON array MUST contain these exact text keys:
+- "company" (string)
+- "contact_person" (string)
+- "deal_score" (integer, 1-100)
+- "priority" (string uppercase: either 'HOT', 'WARM', or 'COLD')
+- "our_value_prop" (string text)
+- "pain_points" (list of strings)
+- "opening_hook" (string text)
+- "objection_handling" (string text)
+- "estimated_value" (string text)
+- "urgency_signal" (string text)
+- "recommended_approach" (string text)
 
-                st.markdown(f"""
-                <div class="lead-card">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
-                        <div>
-                            <p class="lead-name">{s.get('company', 'Unknown')}</p>
-                            <p class="lead-address">👤 {s.get('contact_person', '')} · 📊 Score: <b style="color:#a855f7">{s.get('deal_score', 0)}/100</b></p>
-                        </div>
-                        <span class="{badge_class}">{badge_icon} {priority}</span>
-                    </div>
-                    <div class="strategy-box">
-                        <div class="strategy-title">🎯 Strategic Value Proposition</div>
-                        <div class="strategy-text">{s.get('our_value_prop', '')}</div>
-                    </div>
-                    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;">
-                        <div style="flex:1;min-width:160px;">
-                            <p style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;">Pain Points</p>
-                            <ul style="color:#b0bec5;font-size:0.82rem;margin:4px 0;padding-left:16px;">
-                                {''.join([f"<li>{p}</li>" for p in s.get('pain_points', [])])}
-                            </ul>
-                        </div>
-                        <div style="flex:1;min-width:160px;">
-                            <p style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;">Opening Hook</p>
-                            <p style="color:#e0e6f0;font-size:0.84rem;font-style:italic;">"{s.get('opening_hook', '')}"</p>
-                        </div>
-                        <div style="flex:1;min-width:160px;">
-                            <p style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;">Objection & Handle</p>
-                            <p style="color:#b0bec5;font-size:0.82rem;">{s.get('objection_handling', '')}</p>
-                        </div>
-                    </div>
-                    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #1e2a3e;display:flex;gap:20px;flex-wrap:wrap;">
-                        <span style="font-size:0.8rem;color:#7a8ba0;">💰 {s.get('estimated_value', '')}</span>
-                        <span style="font-size:0.8rem;color:#7a8ba0;">⚡ {s.get('urgency_signal', '')}</span>
-                        <span style="font-size:0.8rem;color:#7a8ba0;">📋 {s.get('recommended_approach', '')}</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-        else:
-            st.warning("⚠️ Could not compile standard strategy cards. Reviewing raw data stream:")
-            with st.expander("📄 Raw OpenRouter Strategy Output"):
-                st.text(strategy_raw)
+Return ONLY the JSON array. No markdown. No explanation. No backticks."""
 
-    except Exception as e:
-        st.error(f"❌ OpenRouter Agent Error: {e}")
-        st.stop()
+    response = or_client.chat.completions.create(
+        model="openrouter/auto",
+        messages=[{"role": "user", "content": analysis_prompt}]
+    )
+
+    return response.choices[0].message.content
 # ─────────────────────────────────────────────
 # AGENT 3: CHATGPT — MESSAGE DRAFTING
 # ─────────────────────────────────────────────
