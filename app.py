@@ -477,19 +477,20 @@ with st.spinner("🧠 OpenRouter is strategizing for each lead ($0 Cost)..."):
         )
         
         strategy_raw = response.choices[0].message.content
-                
-                # Built-in safe JSON parser replacement
-                import json
-                try:
-                    # Clean up any accidental markdown wrapping if the AI includes it
-                    clean_raw = strategy_raw.strip()
-                    if clean_raw.startswith("```json"):
-                        clean_raw = clean_raw.split("```json")[1].split("```")[0].strip()
-                    elif clean_raw.startswith("```"):
-                        clean_raw = clean_raw.split("```")[1].split("```")[0].strip()
-                    strategy_list = json.loads(clean_raw)
-                except Exception:
-                    strategy_list = []     
+        
+        # FIXED: Brought this entire block back 4 spaces to match strategy_raw's indent depth
+        import json
+        try:
+            # Clean up any accidental markdown wrapping if the AI includes it
+            clean_raw = strategy_raw.strip()
+            if clean_raw.startswith("```json"):
+                clean_raw = clean_raw.split("```json")[1].split("```")[0].strip()
+            elif clean_raw.startswith("```"):
+                clean_raw = clean_raw.split("```")[1].split("```")[0].strip()
+            strategy_list = json.loads(clean_raw)
+        except Exception:
+            strategy_list = []     
+            
         st.session_state.pipeline_results['strategy'] = strategy_list
 
         st.success(f"✅ OpenRouter analyzed {len(strategy_list)} leads with strategic scoring")
