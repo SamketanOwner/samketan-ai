@@ -445,11 +445,17 @@ with st.spinner("🧠 OpenRouter is strategizing for each lead ($0 Cost)..."):
             api_key=st.secrets.get("OPENROUTER_API_KEY")
         )
         
+        # Safety Guardrail: Re-initialize pipeline_results if Streamlit cleared it
+        if st.session_state.get('pipeline_results') is None:
+            st.session_state.pipeline_results = {}
+            
+        raw_leads_data = st.session_state.pipeline_results.get('gemini_raw', 'No raw lead data found.')
+        
         analysis_prompt = f"""
         You are a senior business growth strategist. Analyze the raw lead dataset below and extract strategic matching insights.
         
         Raw Leads Data from Gemini:
-        {st.session_state.pipeline_results.get('gemini_raw', '') if st.session_state.get('pipeline_results') else 'No raw data found'}
+        {raw_leads_data}
         
         Our Company Identity: {our_company}
         Our Product/Service Offer: {our_product}
@@ -478,10 +484,9 @@ with st.spinner("🧠 OpenRouter is strategizing for each lead ($0 Cost)..."):
         
         strategy_raw = response.choices[0].message.content
         
-        # FIXED: Brought this entire block back 4 spaces to match strategy_raw's indent depth
+        # Clean up and load JSON data safely
         import json
         try:
-            # Clean up any accidental markdown wrapping if the AI includes it
             clean_raw = strategy_raw.strip()
             if clean_raw.startswith("```json"):
                 clean_raw = clean_raw.split("```json")[1].split("```")[0].strip()
@@ -491,6 +496,7 @@ with st.spinner("🧠 OpenRouter is strategizing for each lead ($0 Cost)..."):
         except Exception:
             strategy_list = []     
             
+        # This will now succeed perfectly with zero item assignment errors
         st.session_state.pipeline_results['strategy'] = strategy_list
 
         st.success(f"✅ OpenRouter analyzed {len(strategy_list)} leads with strategic scoring")
