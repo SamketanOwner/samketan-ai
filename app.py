@@ -422,15 +422,11 @@ RULES:
     return response.text, selected
 pipeline_status_placeholder = st.empty()
 # ─────────────────────────────────────────────
-# AGENT 2: OPENROUTER / CLAUDE STRATEGIST
+# AGENT 2: CLAUDE STRATEGIST (Direct Anthropic API)
 # ─────────────────────────────────────────────
 def agent_claude_strategist(raw_leads_data, our_product, our_company, my_product, reply_tone):
-    """OpenRouter strategizes for each lead (free, replaces Claude direct API)"""
-    from openai import OpenAI
-    or_client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=st.secrets.get("OPENROUTER_API_KEY", "")
-    )
+    """Claude directly strategizes for each lead via Anthropic API"""
+    client = anthropic.Anthropic(api_key=claude_key.strip())
 
     analysis_prompt = f"""You are a senior business growth strategist. Analyze the raw lead dataset below and extract strategic matching insights.
 
@@ -443,27 +439,27 @@ Specific Product Target: {my_product}
 Required Outreach Tone: {reply_tone}
 
 CRITICAL INSTRUCTION: Return your response ONLY as a valid JSON array of objects.
-Each object in the JSON array MUST contain these exact text keys:
+Each object MUST contain these exact keys:
 - "company" (string)
 - "contact_person" (string)
 - "deal_score" (integer, 1-100)
-- "priority" (string uppercase: either 'HOT', 'WARM', or 'COLD')
-- "our_value_prop" (string text)
+- "priority" (string uppercase: 'HOT', 'WARM', or 'COLD')
+- "our_value_prop" (string)
 - "pain_points" (list of strings)
-- "opening_hook" (string text)
-- "objection_handling" (string text)
-- "estimated_value" (string text)
-- "urgency_signal" (string text)
-- "recommended_approach" (string text)
+- "opening_hook" (string)
+- "objection_handling" (string)
+- "estimated_value" (string)
+- "urgency_signal" (string)
+- "recommended_approach" (string)
 
 Return ONLY the JSON array. No markdown. No explanation. No backticks."""
 
-    response = or_client.chat.completions.create(
-        model="openrouter/auto",
+    message = client.messages.create(
+        model="claude-opus-4-5",
+        max_tokens=4000,
         messages=[{"role": "user", "content": analysis_prompt}]
     )
-
-    return response.choices[0].message.content
+    return message.content[0].text
 # ─────────────────────────────────────────────
 # AGENT 3: CHATGPT — MESSAGE DRAFTING
 # ─────────────────────────────────────────────
