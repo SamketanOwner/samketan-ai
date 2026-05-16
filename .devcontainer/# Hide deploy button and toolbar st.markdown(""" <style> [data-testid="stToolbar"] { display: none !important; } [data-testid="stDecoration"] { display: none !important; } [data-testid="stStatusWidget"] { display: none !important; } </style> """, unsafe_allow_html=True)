@@ -1,1 +1,6 @@
+[server]
+enableCORS = false
 
+[client]
+showErrorDetails = false
+toolbarMode = "viewer"
