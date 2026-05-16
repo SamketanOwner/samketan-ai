@@ -422,7 +422,7 @@ RULES:
     return response.text, selected
 
 # ─────────────────────────────────────────────
-# ── PHASE 2: OPENROUTER STRATEGIST (FREE REPLACEMENT FOR CLAUDE) 
+# PHASE 2: OPENROUTER STRATEGIST (FREE REPLACEMENT FOR CLAUDE) 
 # ─────────────────────────────────────────────
       with pipeline_status_placeholder.container():
           show_agent_pipeline({"gemini": "done", "claude": "running", "gpt": "idle", "auto": "idle"})
