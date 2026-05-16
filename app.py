@@ -2,7 +2,7 @@
 
 import streamlit as st
 import auth
-
+import time
 # --- AUTHENTICATION ---
 if not auth.login_screen():
     st.stop()
