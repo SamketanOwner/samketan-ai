@@ -245,7 +245,7 @@ st.markdown("""
 # API KEYS
 # ─────────────────────────────────────────────
 gemini_key  = st.secrets.get("GOOGLE_API_KEY", "")
-openrouter_api_key = st.secret.get("your_new_openrouter_key","")
+openrouter_api_key = st.secrets.get("OPENROUTER_API_KEY", "")
 openai_key  = st.secrets.get("OPENAI_API_KEY", "")
 claude_key  = st.secrets.get("ANTHROPIC_API_KEY", "")
 
