@@ -449,7 +449,7 @@ with st.spinner("🧠 OpenRouter is strategizing for each lead ($0 Cost)..."):
         You are a senior business growth strategist. Analyze the raw lead dataset below and extract strategic matching insights.
         
         Raw Leads Data from Gemini:
-        {st.session_state.pipeline_results.get('gemini_raw', '')}
+        {st.session_state.pipeline_results.get('gemini_raw', '') if st.session_state.get('pipeline_results') else 'No raw data found'}
         
         Our Company Identity: {our_company}
         Our Product/Service Offer: {our_product}
