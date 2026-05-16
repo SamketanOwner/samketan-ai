@@ -177,9 +177,23 @@ st.markdown("""
         border-radius: 8px; padding: 10px 14px; color: #e0e6f0; font-size: 0.88rem; margin-bottom: 12px;
     }
 
-    #MainMenu { visibility: hidden; }
+#MainMenu { visibility: hidden; }
     footer     { visibility: hidden; }
     header     { visibility: hidden; }
+
+    /* Hide Streamlit toolbar icons - edit, github, share, menu */
+    [data-testid="stToolbar"]          { display: none !important; }
+    [data-testid="stDecoration"]       { display: none !important; }
+    [data-testid="stStatusWidget"]     { display: none !important; }
+    .st-emotion-cache-zq5wmm           { display: none !important; }
+    .st-emotion-cache-1dp5vir           { display: none !important; }
+    .viewerBadge_container__1QSob      { display: none !important; }
+    .viewerBadge_link__1S137           { display: none !important; }
+    #stDecoration                      { display: none !important; }
+
+    /* Hide top-right action buttons (share, star, pencil, github, dots) */
+    [data-testid="baseButton-header"]  { display: none !important; }
+    .st-emotion-cache-h5rgaw           { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
