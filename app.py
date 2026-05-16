@@ -306,12 +306,25 @@ import time
 # ---------------------------------------------
 def get_gemini_model():
     genai.configure(api_key=gemini_key.strip())
-    # HARDCODED to 1.5-flash - DO NOT change order
-    # gemini-2.5-flash = 20/day, gemini-2.0-flash = 200/day
-    # gemini-1.5-flash = 1500/day FREE - always use this
-    model    = genai.GenerativeModel('gemini-1.5-flash')
-    selected = 'models/gemini-1.5-flash'
-    return model, selected
+    # Try models in order until one works
+    candidates = [
+        'gemini-1.5-flash-latest',
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-001',
+        'gemini-2.0-flash-lite',
+        'gemini-2.0-flash',
+    ]
+    for name in candidates:
+        try:
+            model = genai.GenerativeModel(name)
+            # Quick test to confirm model is accessible
+            model.count_tokens("test")
+            return model, name
+        except Exception:
+            continue
+    # Last resort fallback
+    model = genai.GenerativeModel('gemini-2.0-flash-lite')
+    return model, 'gemini-2.0-flash-lite'
 
 # ---------------------------------------------
 # HELPER: CALL GEMINI WITH AUTO-RETRY ON 429
