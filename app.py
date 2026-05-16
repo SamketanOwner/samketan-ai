@@ -461,13 +461,16 @@ Start your response with [ and end with ]"""
     response = model.generate_content(analysis_prompt)
     return response.text
 # ─────────────────────────────────────────────
-# AGENT 3: CHATGPT — MESSAGE DRAFTING
+# AGENT 3: GEMINI COMMUNICATOR (Free)
 # ─────────────────────────────────────────────
 def agent_gpt_communicator(strategy_data, our_product, our_company, our_contact, our_email, reply_tone):
-    """ChatGPT writes personalized WhatsApp + Email for each lead"""
-    
-    client = OpenAI(api_key=openai_key.strip())
-    
+    """Gemini writes personalized WhatsApp + Email for each lead — 100% Free"""
+    genai.configure(api_key=gemini_key.strip())
+    available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    priority  = ['models/gemini-2.5-flash', 'models/gemini-2.0-flash', 'models/gemini-1.5-flash']
+    selected  = next((m for m in priority if m in available), available[0])
+    model     = genai.GenerativeModel(selected)
+
     prompt = f"""You are an expert B2B sales communicator for {our_company}.
 
 OUR OFFERING: {our_product}
@@ -478,33 +481,72 @@ COMMUNICATION TONE: {reply_tone}
 STRATEGIC ANALYSIS FOR EACH LEAD:
 {json.dumps(strategy_data, indent=2)}
 
-For each lead in the strategy data, write:
-1. A WhatsApp message (max 200 words, conversational, includes their pain point, our solution, clear CTA)
-2. A professional Email (Subject line + Body, max 300 words, formal but warm, includes specific value proposition)
+For each lead write:
+1. A WhatsApp message (max 200 words, conversational, mentions their pain point, our solution, clear CTA)
+2. A professional Email (Subject + Body, max 300 words, formal but warm)
 
-Return as JSON array:
-[
-  {{
-    "company": "Company Name",
-    "contact_person": "Name",
-    "phone": "phone",
-    "email": "email",
-    "whatsapp_message": "Full WhatsApp message here",
-    "email_subject": "Email subject line",
-    "email_body": "Full email body here",
-    "best_time_to_contact": "e.g. Tuesday 10 AM - 12 PM",
-    "follow_up_day": "e.g. 3 days after initial contact"
-  }}
-]
+CRITICAL: Return ONLY a valid JSON array. No markdown. No backticks. No explanation.
+Each object MUST have these exact keys:
+- "company" (string)
+- "contact_person" (string)
+- "phone" (string)
+- "email" (string)
+- "whatsapp_message" (string)
+- "email_subject" (string)
+- "email_body" (string)
+- "best_time_to_contact" (string, e.g. "Tuesday 10 AM - 12 PM")
+- "follow_up_day" (string, e.g. "3 days after initial contact")
 
-Return ONLY valid JSON. No markdown. No extra text.
-"""
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        max_tokens=4000,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    return response.choices[0].message.content
+Start your response with [ and end with ]"""
+
+    response = model.generate_content(prompt)
+    return response.text
+
+
+# ─────────────────────────────────────────────
+# AGENT 4: GEMINI AUTO-RESPONDER (Free)
+# ─────────────────────────────────────────────
+def agent_auto_responder(lead_data, strategy, messages, our_product, our_company, reply_tone):
+    """Gemini simulates client reply and generates smart auto-response — 100% Free"""
+    genai.configure(api_key=gemini_key.strip())
+    available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    priority  = ['models/gemini-2.5-flash', 'models/gemini-2.0-flash', 'models/gemini-1.5-flash']
+    selected  = next((m for m in priority if m in available), available[0])
+    model     = genai.GenerativeModel(selected)
+
+    prompt = f"""You are simulating an autonomous sales conversation system for {our_company}.
+
+OUR OFFERING: {our_product}
+COMMUNICATION TONE: {reply_tone}
+
+LEAD CONTEXT:
+- Company: {lead_data.get('company', 'Unknown')}
+- Contact: {lead_data.get('contact_person', 'Unknown')}
+- Priority: {strategy.get('priority', 'WARM')}
+- Pain Points: {strategy.get('pain_points', [])}
+- Our Value Prop: {strategy.get('our_value_prop', '')}
+
+INITIAL MESSAGE WE SENT:
+WhatsApp: {messages.get('whatsapp_message', '')}
+
+TASK: Simulate TWO things:
+1. SIMULATE_REPLY: A realistic client reply (interested / skeptical / asking details / requesting pricing)
+2. AUTO_RESPONSE: Our intelligent automated reply to their simulated response
+
+CRITICAL: Return ONLY a valid JSON object. No markdown. No backticks. No explanation.
+The object MUST have these exact keys:
+- "simulated_client_reply" (string)
+- "reply_scenario" (string: interested / needs_more_info / price_sensitive / requesting_visit / not_interested)
+- "auto_response_whatsapp" (string)
+- "auto_response_email" (string)
+- "next_action" (string)
+- "escalate_to_human" (boolean)
+- "escalation_reason" (string)
+
+Start your response with {{ and end with }}"""
+
+    response = model.generate_content(prompt)
+    return response.text
 
 # ─────────────────────────────────────────────
 # AGENT 4: AUTO-RESPONDER
