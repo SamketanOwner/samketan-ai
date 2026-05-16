@@ -420,7 +420,7 @@ RULES:
 """
     response = model.generate_content(prompt)
     return response.text, selected
-
+pipeline_status_placeholder = st.empty()
 # ──────────────────────────────────────────────────────────────────────
 # AGENT 2: OPENROUTER STRATEGIST (FREE REPLACEMENT FOR CLAUDE)
 # ──────────────────────────────────────────────────────────────────────
