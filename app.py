@@ -422,44 +422,44 @@ RULES:
     return response.text, selected
 pipeline_status_placeholder = st.empty()
 # ─────────────────────────────────────────────
-# AGENT 2: CLAUDE STRATEGIST (Direct Anthropic API)
+# AGENT 2: GEMINI STRATEGIST (Free - same key)
 # ─────────────────────────────────────────────
 def agent_claude_strategist(raw_leads_data, our_product, our_company, my_product, reply_tone):
-    """Claude directly strategizes for each lead via Anthropic API"""
-    client = anthropic.Anthropic(api_key=claude_key.strip())
+    """Gemini acts as Strategist — 100% free using existing GOOGLE_API_KEY"""
+    genai.configure(api_key=gemini_key.strip())
+    available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    priority  = ['models/gemini-2.5-flash', 'models/gemini-2.0-flash', 'models/gemini-1.5-flash']
+    selected  = next((m for m in priority if m in available), available[0])
+    model     = genai.GenerativeModel(selected)
 
-    analysis_prompt = f"""You are a senior business growth strategist. Analyze the raw lead dataset below and extract strategic matching insights.
+    analysis_prompt = f"""You are a senior business growth strategist. Analyze the raw lead dataset below.
 
-Raw Leads Data from Gemini:
+Raw Leads Data:
 {raw_leads_data}
 
-Our Company Identity: {our_company}
-Our Product/Service Offer: {our_product}
-Specific Product Target: {my_product}
-Required Outreach Tone: {reply_tone}
+Our Company: {our_company}
+Our Offering: {our_product}
+Product We Sell: {my_product}
+Outreach Tone: {reply_tone}
 
-CRITICAL INSTRUCTION: Return your response ONLY as a valid JSON array of objects.
-Each object MUST contain these exact keys:
+CRITICAL: Return ONLY a valid JSON array. No markdown. No backticks. No explanation.
+Each object MUST have these exact keys:
 - "company" (string)
 - "contact_person" (string)
-- "deal_score" (integer, 1-100)
-- "priority" (string uppercase: 'HOT', 'WARM', or 'COLD')
+- "deal_score" (integer 1-100)
+- "priority" (string: HOT, WARM, or COLD)
 - "our_value_prop" (string)
-- "pain_points" (list of strings)
+- "pain_points" (array of strings)
 - "opening_hook" (string)
 - "objection_handling" (string)
 - "estimated_value" (string)
 - "urgency_signal" (string)
 - "recommended_approach" (string)
 
-Return ONLY the JSON array. No markdown. No explanation. No backticks."""
+Start your response with [ and end with ]"""
 
-    message = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=4000,
-        messages=[{"role": "user", "content": analysis_prompt}]
-    )
-    return message.content[0].text
+    response = model.generate_content(analysis_prompt)
+    return response.text
 # ─────────────────────────────────────────────
 # AGENT 3: CHATGPT — MESSAGE DRAFTING
 # ─────────────────────────────────────────────
