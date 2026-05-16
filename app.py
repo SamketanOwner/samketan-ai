@@ -302,7 +302,8 @@ Simulates client reply and generates follow-up
 def get_gemini_model():
     genai.configure(api_key=gemini_key.strip())
     available = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-    priority  = ['models/gemini-2.5-flash', 'models/gemini-2.0-flash', 'models/gemini-1.5-flash']
+    # gemini-1.5-flash = 1500 req/day FREE (gemini-2.5-flash = only 20/day free)
+    priority  = ['models/gemini-1.5-flash', 'models/gemini-2.0-flash', 'models/gemini-1.5-pro']
     selected  = next((m for m in priority if m in available), available[0])
     return genai.GenerativeModel(selected), selected
 
