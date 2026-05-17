@@ -3,6 +3,7 @@
 import streamlit as st
 import auth
 import time
+
 # --- AUTHENTICATION ---
 if not auth.login_screen():
     st.stop()
@@ -27,17 +28,22 @@ st.set_page_config(
     page_icon="S",
     layout="wide"
 )
-# Hide deploy button and toolbar
+
+# --- HIDE TOOLBAR ---
 st.markdown("""
 <style>
-[data-testid="stToolbar"] { display: none !important; }
-[data-testid="stDecoration"] { display: none !important; }
-[data-testid="stStatusWidget"] { display: none !important; }
+[data-testid="stToolbar"]         { display: none !important; }
+[data-testid="stDecoration"]      { display: none !important; }
+[data-testid="stStatusWidget"]    { display: none !important; }
+[data-testid="baseButton-header"] { display: none !important; }
+#stDecoration                     { display: none !important; }
+.viewerBadge_container__1QSob    { display: none !important; }
+.st-emotion-cache-zq5wmm          { display: none !important; }
+.st-emotion-cache-h5rgaw          { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
-# ---------------------------------------------
-# GLOBAL CSS
-# ---------------------------------------------
+
+# --- GLOBAL CSS ---
 st.markdown("""
 <style>
     .stApp { background-color: #0a0d14; }
@@ -45,13 +51,9 @@ st.markdown("""
 
     .header-banner {
         background: linear-gradient(135deg, #0d1117 0%, #0a1929 50%, #0d1117 100%);
-        border: 1px solid #1e3a5f;
-        border-radius: 16px;
-        padding: 28px 36px;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        border: 1px solid #1e3a5f; border-radius: 16px;
+        padding: 28px 36px; margin-bottom: 20px;
+        display: flex; align-items: center; justify-content: space-between;
     }
     .header-title { font-size: 2rem; font-weight: 800; color: #fff; margin: 0; }
     .header-sub   { font-size: 0.92rem; color: #7a8ba0; margin-top: 6px; }
@@ -60,7 +62,6 @@ st.markdown("""
         color: white; padding: 8px 20px; border-radius: 20px;
         font-size: 0.78rem; font-weight: 700; letter-spacing: 1.5px;
     }
-
     .promo-bar {
         background: linear-gradient(90deg,#1a0a00,#2d1500);
         border: 1px solid #FF8C00; border-radius: 8px;
@@ -68,26 +69,20 @@ st.markdown("""
         font-size: 14px; color: #FFB347; font-weight: 600;
     }
     .promo-bar a { color: #FFD700; text-decoration: none; font-weight: 700; }
-
     .agent-card {
-        flex: 1; min-width: 200px;
-        background: #0f1219;
-        border: 1px solid #1e2a3e;
-        border-radius: 14px;
-        padding: 18px 20px;
-        text-align: center;
-        transition: all 0.3s ease;
+        flex: 1; min-width: 200px; background: #0f1219;
+        border: 1px solid #1e2a3e; border-radius: 14px;
+        padding: 18px 20px; text-align: center; transition: all 0.3s ease;
     }
     .agent-card.active { border-color: #7b2ff7; box-shadow: 0 0 20px rgba(123,47,247,0.3); }
     .agent-card.done   { border-color: #00c851; box-shadow: 0 0 15px rgba(0,200,81,0.2); }
-    .agent-icon  { font-size: 2rem; margin-bottom: 8px; }
-    .agent-name  { font-size: 0.9rem; font-weight: 700; color: #e0e6f0; }
-    .agent-role  { font-size: 0.75rem; color: #7a8ba0; margin-top: 4px; }
+    .agent-icon   { font-size: 2rem; margin-bottom: 8px; }
+    .agent-name   { font-size: 0.9rem; font-weight: 700; color: #e0e6f0; }
+    .agent-role   { font-size: 0.75rem; color: #7a8ba0; margin-top: 4px; }
     .agent-status { font-size: 0.72rem; margin-top: 8px; padding: 3px 10px; border-radius: 10px; display: inline-block; }
     .status-idle    { background: #1a1d27; color: #4a5568; }
     .status-running { background: #1a0d2e; color: #a855f7; }
     .status-done    { background: #0a1a0a; color: #00c851; }
-
     .input-card {
         background: #0f1219; border: 1px solid #1e2a3e;
         border-radius: 14px; padding: 24px; margin-bottom: 20px;
@@ -98,22 +93,17 @@ st.markdown("""
         border: 1px solid #1e2a3e !important;
         color: #e0e6f0 !important; border-radius: 8px !important;
     }
-
     .phase-header {
         background: linear-gradient(90deg, #0a1929, #0d1117);
-        border: 1px solid #1e3a5f;
-        border-left: 4px solid #4285f4;
-        border-radius: 10px;
-        padding: 14px 20px;
-        margin: 20px 0 14px 0;
-        display: flex; align-items: center; gap: 12px;
+        border: 1px solid #1e3a5f; border-left: 4px solid #4285f4;
+        border-radius: 10px; padding: 14px 20px;
+        margin: 20px 0 14px 0; display: flex; align-items: center; gap: 12px;
     }
     .phase-claude { border-left-color: #a855f7 !important; }
     .phase-gpt    { border-left-color: #00c851 !important; }
     .phase-auto   { border-left-color: #f59e0b !important; }
     .phase-title  { font-size: 1rem; font-weight: 700; color: #fff; margin: 0; }
     .phase-sub    { font-size: 0.8rem; color: #7a8ba0; margin-top: 2px; }
-
     .lead-card {
         background: #0f1219; border: 1px solid #1e2a3e;
         border-radius: 14px; padding: 20px 24px; margin-bottom: 14px;
@@ -121,19 +111,15 @@ st.markdown("""
     .lead-card:hover { border-color: #4285f4; box-shadow: 0 4px 24px rgba(66,133,244,0.15); }
     .lead-name    { font-size: 1.05rem; font-weight: 700; color: #fff; margin: 0; }
     .lead-address { font-size: 0.8rem; color: #7a8ba0; margin-top: 4px; }
-
     .badge-hot  { background:#1a0a0a; color:#ff4444; border:1px solid #ff4444; padding:4px 12px; border-radius:20px; font-size:0.72rem; font-weight:700; }
     .badge-warm { background:#1a1200; color:#ffaa00; border:1px solid #ffaa00; padding:4px 12px; border-radius:20px; font-size:0.72rem; font-weight:700; }
     .badge-cold { background:#001a2a; color:#0099ff; border:1px solid #0099ff; padding:4px 12px; border-radius:20px; font-size:0.72rem; font-weight:700; }
-
     .strategy-box {
         background: #0a0d14; border: 1px solid #2d1657;
-        border-left: 3px solid #a855f7;
-        border-radius: 10px; padding: 16px 20px; margin: 10px 0;
+        border-left: 3px solid #a855f7; border-radius: 10px; padding: 16px 20px; margin: 10px 0;
     }
     .strategy-title { color: #a855f7; font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; }
     .strategy-text  { color: #b0bec5; font-size: 0.84rem; line-height: 1.6; }
-
     .msg-box { background: #0a0d14; border: 1px solid #1e2a3e; border-radius: 10px; padding: 16px; margin: 10px 0; }
     .msg-whatsapp { border-left: 3px solid #25D366; }
     .msg-email    { border-left: 3px solid #4285f4; }
@@ -141,87 +127,48 @@ st.markdown("""
     .msg-label-wa   { color: #25D366; }
     .msg-label-mail { color: #4285f4; }
     .msg-content  { color: #b0bec5; font-size: 0.84rem; line-height: 1.6; white-space: pre-wrap; }
-
     .autoreply-box {
         background: #0f1a0f; border: 1px solid #1a3a1a;
-        border-left: 3px solid #00c851;
-        border-radius: 10px; padding: 16px; margin: 10px 0;
+        border-left: 3px solid #00c851; border-radius: 10px; padding: 16px; margin: 10px 0;
     }
     .autoreply-label { color: #00c851; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
     .autoreply-text  { color: #b0bec5; font-size: 0.84rem; line-height: 1.6; white-space: pre-wrap; }
-
     .action-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
     .btn-wa   { background:#0d2a1a; color:#25D366; border:1px solid #25D366; padding:8px 16px; border-radius:8px; font-size:0.82rem; font-weight:700; text-decoration:none; display:inline-block; }
     .btn-mail { background:#0d1a2a; color:#64b5f6; border:1px solid #64b5f6; padding:8px 16px; border-radius:8px; font-size:0.82rem; font-weight:700; text-decoration:none; display:inline-block; }
-
-    .stTabs [data-baseweb="tab-list"] {
-        background: #0f1219 !important; border-radius: 10px; padding: 4px; gap: 4px; border: 1px solid #1e2a3e;
-    }
-    .stTabs [data-baseweb="tab"] {
-        background: transparent !important; color: #7a8ba0 !important;
-        border-radius: 8px !important; font-weight: 600 !important; padding: 10px 20px !important;
-    }
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg,#7b2ff7,#f107a3) !important; color: white !important;
-    }
-
     .stButton > button {
         background: linear-gradient(135deg,#7b2ff7,#f107a3) !important;
         color: white !important; border: none !important;
         border-radius: 10px !important; font-weight: 700 !important;
         font-size: 1rem !important; padding: 14px 32px !important; width: 100% !important;
     }
-
     .conversation-entry {
         background: #0a0d14; border: 1px solid #1e2a3e;
         border-radius: 10px; padding: 14px 18px; margin-bottom: 10px;
     }
     .conv-from { font-size: 0.75rem; color: #7a8ba0; margin-bottom: 6px; }
     .conv-msg  { color: #b0bec5; font-size: 0.84rem; line-height: 1.6; }
-
     .user-chip {
         background: #0a0d14; border: 1px solid #1e2a3e;
         border-radius: 8px; padding: 10px 14px; color: #e0e6f0; font-size: 0.88rem; margin-bottom: 12px;
     }
-
-#MainMenu { visibility: hidden; }
+    #MainMenu { visibility: hidden; }
     footer     { visibility: hidden; }
     header     { visibility: hidden; }
-
-    /* Hide Streamlit toolbar icons - edit, github, share, menu */
-    [data-testid="stToolbar"]          { display: none !important; }
-    [data-testid="stDecoration"]       { display: none !important; }
-    [data-testid="stStatusWidget"]     { display: none !important; }
-    .st-emotion-cache-zq5wmm           { display: none !important; }
-    .st-emotion-cache-1dp5vir           { display: none !important; }
-    .viewerBadge_container__1QSob      { display: none !important; }
-    .viewerBadge_link__1S137           { display: none !important; }
-    #stDecoration                      { display: none !important; }
-
-    /* Hide top-right action buttons (share, star, pencil, github, dots) */
-    [data-testid="baseButton-header"]  { display: none !important; }
-    .st-emotion-cache-h5rgaw           { display: none !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------
-# API KEYS (Gemini only - 100% free)
-# ---------------------------------------------
+# --- API KEY ---
 gemini_key = st.secrets.get("GOOGLE_API_KEY", "")
 
-# ---------------------------------------------
-# SESSION STATE INIT
-# ---------------------------------------------
+# --- SESSION STATE ---
 for key in ['pipeline_results', 'conversation_log', 'leads_data']:
     if key not in st.session_state:
         st.session_state[key] = None
-
 if st.session_state.conversation_log is None:
     st.session_state.conversation_log = []
 
-# ---------------------------------------------
-# HEADER
-# ---------------------------------------------
+# --- HEADER ---
 st.markdown("""
 <div class="header-banner">
     <div>
@@ -238,26 +185,22 @@ st.markdown("""
 st.markdown("""
 <div class="promo-bar">
     AVAILABLE FOR LEASE: Premium 21,000 Sq. Ft. RCC Warehouse - Nandur Area, Gulbarga
-    <a href="https://bhoodeviwarehouse.netlify.app/" target="_blank"> Visit Bhoodevi Warehouse</a>
+    <a href="https://bhoodeviwarehouse.netlify.app/" target="_blank">Visit Bhoodevi Warehouse</a>
 </div>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------
-# SIDEBAR
-# ---------------------------------------------
+# --- SIDEBAR ---
 with st.sidebar:
     st.markdown("### Samketan Profile")
     st.markdown(
         '<div class="user-chip">User: ' + str(st.session_state.get("current_user", "User")) + '</div>',
         unsafe_allow_html=True
     )
-
     st.markdown("---")
     st.markdown("### API Key")
     st.caption("Auto-loaded from Streamlit Secrets.")
     if not gemini_key:
         gemini_key = st.text_input("Google Gemini Key", type="password", placeholder="AIza...")
-
     st.markdown("---")
     st.markdown("### Our Offering (Context for AI)")
     our_product = st.text_area(
@@ -268,12 +211,10 @@ with st.sidebar:
     our_company = st.text_input("Company Name", value="Samketan / Bhoodevi Warehouse")
     our_contact = st.text_input("Our Contact", value="+91-XXXXXXXXXX")
     our_email   = st.text_input("Our Email", value="samketan@example.com")
-
     st.markdown("---")
     st.markdown("### Auto-Reply Settings")
     auto_reply_enabled = st.toggle("Enable Auto-Reply Simulation", value=True)
     reply_tone = st.selectbox("Reply Tone", ["Professional & Warm", "Formal", "Friendly & Casual", "Urgent & Direct"])
-
     st.markdown("---")
     with st.expander("How Multi-Agent Works"):
         st.markdown("""
@@ -284,12 +225,12 @@ Finds real business leads with contact details
 Analyses each lead, creates personalised strategy
 
 **Agent 3 - Gemini Communicator**
-Writes tailored WhatsApp + Email for each lead
+Writes tailored WhatsApp and Email for each lead
 
 **Agent 4 - Gemini Auto-Responder**
 Simulates client reply and generates follow-up
         """)
-st.markdown("---")
+    st.markdown("---")
     if st.button("Show Available Models", use_container_width=True):
         try:
             genai.configure(api_key=gemini_key.strip())
@@ -297,29 +238,21 @@ st.markdown("---")
                 m.name for m in genai.list_models()
                 if 'generateContent' in m.supported_generation_methods
             ]
-            st.success("Models on your key:")
+            st.success("Models available on your key:")
             for m in available:
                 st.write(m)
         except Exception as e:
             st.error(str(e))
-
     st.markdown("---")
     if st.button("Logout", use_container_width=True):
         cookie_manager.delete('samketan_user')
         st.session_state.authenticated = False
         st.rerun()
 
-# ---------------------------------------------
-# HELPER: GET GEMINI MODEL
-# ---------------------------------------------
-import time
 
-# ---------------------------------------------
-# HELPER: GET GEMINI MODEL (1.5-flash = 1500/day free)
-# ---------------------------------------------
+# --- HELPER: GET GEMINI MODEL ---
 def get_gemini_model():
     genai.configure(api_key=gemini_key.strip())
-    # Fetch live list of available models from YOUR key
     try:
         available = [
             m.name.replace('models/', '')
@@ -329,8 +262,6 @@ def get_gemini_model():
     except Exception:
         available = []
 
-    # Priority: highest free quota first
-    # gemini-1.5-flash = 1500/day, gemini-2.0-flash = 200/day
     priority = [
         'gemini-1.5-flash-latest',
         'gemini-1.5-flash',
@@ -338,6 +269,7 @@ def get_gemini_model():
         'gemini-1.5-flash-002',
         'gemini-2.0-flash',
         'gemini-2.0-flash-lite',
+        'gemini-2.5-flash-lite',
         'gemini-2.5-flash',
     ]
 
@@ -347,16 +279,13 @@ def get_gemini_model():
             selected = name
             break
 
-    # If nothing matched, just try first available
     if not selected:
         selected = available[0] if available else 'gemini-1.5-flash-latest'
 
-    model = genai.GenerativeModel(selected)
-    return model, selected
+    return genai.GenerativeModel(selected), selected
 
-# ---------------------------------------------
-# HELPER: CALL GEMINI WITH AUTO-RETRY ON 429
-# ---------------------------------------------
+
+# --- HELPER: CALL GEMINI WITH RETRY ---
 def call_gemini_with_retry(model, prompt, retries=3, wait=60):
     for attempt in range(retries):
         try:
@@ -373,15 +302,14 @@ def call_gemini_with_retry(model, prompt, retries=3, wait=60):
                     time.sleep(wait)
                 else:
                     raise Exception(
-                        "All retries exhausted. Please wait a few minutes and try again, "
-                        "or create a new Google API key at https://aistudio.google.com/apikey"
+                        "All retries exhausted. Please create a new Google API key at "
+                        "https://aistudio.google.com/apikey using a NEW project for fresh quota."
                     )
             else:
                 raise e
 
-# ---------------------------------------------
-# HELPER: SAFE JSON PARSE
-# ---------------------------------------------
+
+# --- HELPER: SAFE JSON PARSE ---
 def safe_json_parse(text, default=None):
     try:
         clean = text.strip()
@@ -402,9 +330,8 @@ def safe_json_parse(text, default=None):
     except Exception:
         return default if default is not None else []
 
-# ---------------------------------------------
-# HELPER: PARSE LEADS TABLE
-# ---------------------------------------------
+
+# --- HELPER: PARSE LEADS TABLE ---
 def parse_leads_table(raw_text):
     leads = []
     for line in raw_text.split('\n'):
@@ -426,28 +353,25 @@ def parse_leads_table(raw_text):
             })
     return leads
 
-# ---------------------------------------------
-# AGENT STATUS DISPLAY
-# ---------------------------------------------
+
+# --- AGENT STATUS DISPLAY ---
 def show_agent_pipeline(statuses):
     agents = [
-        {"icon": "Search",    "name": "Gemini Scout",        "role": "Lead Discovery",      "key": "gemini"},
-        {"icon": "Brain",     "name": "Gemini Strategist",   "role": "Strategy & Profiling", "key": "claude"},
-        {"icon": "Mail",      "name": "Gemini Communicator", "role": "Message Drafting",     "key": "gpt"},
-        {"icon": "Refresh",   "name": "Gemini Auto-Reply",   "role": "Conversation AI",      "key": "auto"},
+        {"icon": "&#128269;", "name": "Gemini Scout",        "role": "Lead Discovery",       "key": "gemini"},
+        {"icon": "&#129504;", "name": "Gemini Strategist",   "role": "Strategy & Profiling",  "key": "claude"},
+        {"icon": "&#9993;",   "name": "Gemini Communicator", "role": "Message Drafting",      "key": "gpt"},
+        {"icon": "&#128260;", "name": "Gemini Auto-Reply",   "role": "Conversation AI",       "key": "auto"},
     ]
-    icons = {"Search": "&#128269;", "Brain": "&#129504;", "Mail": "&#9993;", "Refresh": "&#128260;"}
     cols = st.columns(7)
     for i, agent in enumerate(agents):
-        status = statuses.get(agent["key"], "idle")
+        status       = statuses.get(agent["key"], "idle")
         card_class   = "agent-card active" if status == "running" else ("agent-card done" if status == "done" else "agent-card")
         status_class = "agent-status status-" + status
         status_label = {"idle": "Idle", "running": "Running...", "done": "Done"}.get(status, "Idle")
-        icon_html    = icons.get(agent["icon"], "")
         with cols[i * 2]:
             st.markdown(
                 '<div class="' + card_class + '">'
-                '<div class="agent-icon">' + icon_html + '</div>'
+                '<div class="agent-icon">' + agent['icon'] + '</div>'
                 '<div class="agent-name">'  + agent['name'] + '</div>'
                 '<div class="agent-role">'  + agent['role'] + '</div>'
                 '<span class="' + status_class + '">' + status_label + '</span>'
@@ -461,9 +385,8 @@ def show_agent_pipeline(statuses):
                     unsafe_allow_html=True
                 )
 
-# ---------------------------------------------
-# AGENT 1: GEMINI SCOUT
-# ---------------------------------------------
+
+# --- AGENT 1: GEMINI SCOUT ---
 def agent_gemini_scout(region, target_client, my_product, our_product, num_leads):
     model, selected = get_gemini_model()
     prompt = (
@@ -481,12 +404,11 @@ def agent_gemini_scout(region, target_client, my_product, our_product, num_leads
         "- Estimated Deal Size: e.g. Rs.2-5 Lakh/month\n"
         "- NO markdown, NO headers, ONLY table rows\n"
     )
-    response = model.generate_content(prompt)
+    response = call_gemini_with_retry(model, prompt)
     return response.text, selected
 
-# ---------------------------------------------
-# AGENT 2: GEMINI STRATEGIST
-# ---------------------------------------------
+
+# --- AGENT 2: GEMINI STRATEGIST ---
 def agent_gemini_strategist(raw_leads_data, our_product, our_company, my_product, reply_tone):
     model, _ = get_gemini_model()
     prompt = (
@@ -511,12 +433,11 @@ def agent_gemini_strategist(raw_leads_data, our_product, our_company, my_product
         "- recommended_approach (string)\n\n"
         "Start your response with [ and end with ]"
     )
-    response = model.generate_content(prompt)
+    response = call_gemini_with_retry(model, prompt)
     return response.text
 
-# ---------------------------------------------
-# AGENT 3: GEMINI COMMUNICATOR
-# ---------------------------------------------
+
+# --- AGENT 3: GEMINI COMMUNICATOR ---
 def agent_gemini_communicator(strategy_data, our_product, our_company, our_contact, our_email, reply_tone):
     model, _ = get_gemini_model()
     prompt = (
@@ -543,12 +464,11 @@ def agent_gemini_communicator(strategy_data, our_product, our_company, our_conta
         "- follow_up_day (string)\n\n"
         "Start your response with [ and end with ]"
     )
-    response = model.generate_content(prompt)
+    response = call_gemini_with_retry(model, prompt)
     return response.text
 
-# ---------------------------------------------
-# AGENT 4: GEMINI AUTO-RESPONDER
-# ---------------------------------------------
+
+# --- AGENT 4: GEMINI AUTO-RESPONDER ---
 def agent_gemini_autoresponder(lead_data, strategy, messages, our_product, our_company, reply_tone):
     model, _ = get_gemini_model()
     prompt = (
@@ -577,12 +497,11 @@ def agent_gemini_autoresponder(lead_data, strategy, messages, our_product, our_c
         "- escalation_reason (string)\n\n"
         "Start your response with { and end with }"
     )
-    response = model.generate_content(prompt)
+    response = call_gemini_with_retry(model, prompt)
     return response.text
 
-# ---------------------------------------------
-# MAIN INPUT SECTION
-# ---------------------------------------------
+
+# --- MAIN INPUT SECTION ---
 st.markdown('<div class="input-card">', unsafe_allow_html=True)
 st.markdown("### Define Your Target")
 col1, col2, col3 = st.columns(3)
@@ -599,9 +518,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("---")
 
-# ---------------------------------------------
-# PIPELINE STATUS PLACEHOLDER
-# ---------------------------------------------
+# --- PIPELINE STATUS ---
 pipeline_status_placeholder = st.empty()
 with pipeline_status_placeholder.container():
     show_agent_pipeline({"gemini": "idle", "claude": "idle", "gpt": "idle", "auto": "idle"})
@@ -614,9 +531,7 @@ with run_col2:
 
 st.markdown("---")
 
-# ---------------------------------------------
-# PIPELINE EXECUTION
-# ---------------------------------------------
+# --- PIPELINE EXECUTION ---
 if run_pipeline:
     if not gemini_key:
         st.error("Missing GOOGLE_API_KEY. Add it to Streamlit Secrets.")
@@ -626,10 +541,9 @@ if run_pipeline:
         st.session_state.pipeline_results = {}
         st.session_state.conversation_log = []
 
-        # -- PHASE 1: SCOUT --------------------------
+        # PHASE 1
         with pipeline_status_placeholder.container():
             show_agent_pipeline({"gemini": "running", "claude": "idle", "gpt": "idle", "auto": "idle"})
-
         st.markdown(
             '<div class="phase-header">'
             '<span style="font-size:1.5rem">&#128269;</span>'
@@ -639,7 +553,6 @@ if run_pipeline:
             '</div></div>',
             unsafe_allow_html=True
         )
-
         with st.spinner("Gemini is scanning for genuine leads..."):
             try:
                 raw_leads, model_used = agent_gemini_scout(
@@ -649,7 +562,6 @@ if run_pipeline:
                 leads_list = parse_leads_table(raw_leads)
                 st.session_state.leads_data = leads_list
                 st.success("Gemini (" + model_used + ") found " + str(len(leads_list)) + " leads")
-
                 if leads_list:
                     df_display = pd.DataFrame(leads_list)
                     df_display = df_display[['company', 'contact_person', 'role', 'phone', 'email', 'why_need', 'deal_size']]
@@ -662,20 +574,18 @@ if run_pipeline:
                 st.error("Gemini Scout Error: " + str(e))
                 st.stop()
 
-        # -- PHASE 2: STRATEGIST ----------------------
+        # PHASE 2
         with pipeline_status_placeholder.container():
             show_agent_pipeline({"gemini": "done", "claude": "running", "gpt": "idle", "auto": "idle"})
-
         st.markdown(
             '<div class="phase-header phase-claude">'
             '<span style="font-size:1.5rem">&#129504;</span>'
             '<div>'
             '<p class="phase-title">Phase 2: Gemini Strategist - Deep Analysis and Personalization</p>'
-            '<p class="phase-sub">Analysing each lead\'s business, pain points and crafting targeted strategy</p>'
+            '<p class="phase-sub">Analysing each lead and crafting targeted strategy</p>'
             '</div></div>',
             unsafe_allow_html=True
         )
-
         with st.spinner("Gemini is strategizing for each lead..."):
             try:
                 strategy_raw  = agent_gemini_strategist(
@@ -690,24 +600,21 @@ if run_pipeline:
                     priority    = s.get('priority', 'WARM')
                     badge_class = 'badge-hot' if priority == 'HOT' else ('badge-cold' if priority == 'COLD' else 'badge-warm')
                     badge_label = 'HOT' if priority == 'HOT' else ('COLD' if priority == 'COLD' else 'WARM')
-                    pain_items  = "".join(["<li>" + p + "</li>" for p in s.get('pain_points', [])])
-                    company     = s.get('company', 'Unknown')
-                    contact     = s.get('contact_person', '')
+                    pain_items  = "".join(["<li>" + str(p) + "</li>" for p in s.get('pain_points', [])])
+                    company     = str(s.get('company', 'Unknown'))
+                    contact     = str(s.get('contact_person', ''))
                     score       = str(s.get('deal_score', 0))
-                    value_prop  = s.get('our_value_prop', '')
-                    hook        = s.get('opening_hook', '')
-                    objection   = s.get('objection_handling', '')
-                    est_value   = s.get('estimated_value', '')
-                    urgency_sig = s.get('urgency_signal', '')
-                    approach    = s.get('recommended_approach', '')
-
+                    value_prop  = str(s.get('our_value_prop', ''))
+                    hook        = str(s.get('opening_hook', ''))
+                    objection   = str(s.get('objection_handling', ''))
+                    est_value   = str(s.get('estimated_value', ''))
+                    urgency_sig = str(s.get('urgency_signal', ''))
+                    approach    = str(s.get('recommended_approach', ''))
                     st.markdown(
                         '<div class="lead-card">'
                         '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">'
-                        '<div>'
-                        '<p class="lead-name">' + company + '</p>'
-                        '<p class="lead-address">Contact: ' + contact + ' | Score: ' + score + '/100</p>'
-                        '</div>'
+                        '<div><p class="lead-name">' + company + '</p>'
+                        '<p class="lead-address">Contact: ' + contact + ' | Score: ' + score + '/100</p></div>'
                         '<span class="' + badge_class + '">' + badge_label + '</span>'
                         '</div>'
                         '<div class="strategy-box">'
@@ -726,29 +633,24 @@ if run_pipeline:
                         '<div style="flex:1;min-width:160px;">'
                         '<p style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;">Objection Handle</p>'
                         '<p style="color:#b0bec5;font-size:0.82rem;">' + objection + '</p>'
-                        '</div>'
-                        '</div>'
+                        '</div></div>'
                         '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #1e2a3e;display:flex;gap:20px;flex-wrap:wrap;">'
                         '<span style="font-size:0.8rem;color:#7a8ba0;">Value: ' + est_value + '</span>'
                         '<span style="font-size:0.8rem;color:#7a8ba0;">Urgency: ' + urgency_sig + '</span>'
                         '<span style="font-size:0.8rem;color:#7a8ba0;">Approach: ' + approach + '</span>'
-                        '</div>'
-                        '</div>',
+                        '</div></div>',
                         unsafe_allow_html=True
                     )
-
                 if not strategy_list:
                     with st.expander("Raw Strategy Output"):
                         st.text(strategy_raw)
-
             except Exception as e:
                 st.error("Gemini Strategist Error: " + str(e))
                 st.stop()
 
-        # -- PHASE 3: COMMUNICATOR --------------------
+        # PHASE 3
         with pipeline_status_placeholder.container():
             show_agent_pipeline({"gemini": "done", "claude": "done", "gpt": "running", "auto": "idle"})
-
         st.markdown(
             '<div class="phase-header phase-gpt">'
             '<span style="font-size:1.5rem">&#9993;</span>'
@@ -758,34 +660,30 @@ if run_pipeline:
             '</div></div>',
             unsafe_allow_html=True
         )
-
         with st.spinner("Gemini is crafting personalized messages..."):
             try:
                 strategy_list = st.session_state.pipeline_results.get('strategy', [])
                 messages_raw  = agent_gemini_communicator(
-                    strategy_list, our_product, our_company,
-                    our_contact, our_email, reply_tone
+                    strategy_list, our_product, our_company, our_contact, our_email, reply_tone
                 )
                 messages_list = safe_json_parse(messages_raw, [])
                 st.session_state.pipeline_results['messages'] = messages_list
                 st.success("Gemini drafted " + str(len(messages_list)) + " personalized outreach sets")
 
                 for idx, msg in enumerate(messages_list):
-                    phone      = msg.get('phone', '')
-                    email_to   = msg.get('email', '')
-                    wa_text    = msg.get('whatsapp_message', '')
-                    email_sub  = msg.get('email_subject', '')
-                    email_body = msg.get('email_body', '')
-                    company    = msg.get('company', 'Lead ' + str(idx + 1))
-                    best_time  = msg.get('best_time_to_contact', 'Weekday morning')
-                    follow_up  = msg.get('follow_up_day', '3 days')
-
+                    phone      = str(msg.get('phone', ''))
+                    email_to   = str(msg.get('email', ''))
+                    wa_text    = str(msg.get('whatsapp_message', ''))
+                    email_sub  = str(msg.get('email_subject', ''))
+                    email_body = str(msg.get('email_body', ''))
+                    company    = str(msg.get('company', 'Lead ' + str(idx + 1)))
+                    best_time  = str(msg.get('best_time_to_contact', 'Weekday morning'))
+                    follow_up  = str(msg.get('follow_up_day', '3 days'))
                     clean_phone = "".join(filter(str.isdigit, phone))
                     if len(clean_phone) == 10:
                         clean_phone = "91" + clean_phone
                     wa_link   = "https://wa.me/" + clean_phone + "?text=" + urllib.parse.quote(wa_text)
                     mail_link = "mailto:" + email_to + "?subject=" + urllib.parse.quote(email_sub) + "&body=" + urllib.parse.quote(email_body)
-
                     st.markdown(
                         '<div class="lead-card" style="border-color:#1a4a1a;">'
                         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
@@ -803,24 +701,20 @@ if run_pipeline:
                         '<div class="action-row">'
                         '<a class="btn-wa"   href="' + wa_link   + '" target="_blank">Send on WhatsApp</a>'
                         '<a class="btn-mail" href="' + mail_link + '" target="_blank">Open Email Draft</a>'
-                        '</div>'
-                        '</div>',
+                        '</div></div>',
                         unsafe_allow_html=True
                     )
-
                 if not messages_list:
                     with st.expander("Raw Messages Output"):
                         st.text(messages_raw)
-
             except Exception as e:
                 st.error("Gemini Communicator Error: " + str(e))
                 st.stop()
 
-        # -- PHASE 4: AUTO-RESPONDER ------------------
+        # PHASE 4
         if auto_reply_enabled:
             with pipeline_status_placeholder.container():
                 show_agent_pipeline({"gemini": "done", "claude": "done", "gpt": "done", "auto": "running"})
-
             st.markdown(
                 '<div class="phase-header phase-auto">'
                 '<span style="font-size:1.5rem">&#128260;</span>'
@@ -830,7 +724,6 @@ if run_pipeline:
                 '</div></div>',
                 unsafe_allow_html=True
             )
-
             with st.spinner("Auto-Responder generating conversation simulations..."):
                 try:
                     strategy_list = st.session_state.pipeline_results.get('strategy', [])
@@ -856,22 +749,22 @@ if run_pipeline:
                     st.success("Auto-Responder simulated " + str(len(auto_replies)) + " conversation threads")
 
                     scenario_colors = {
-                        'interested':      '#00c851',
-                        'needs_more_info': '#ffaa00',
-                        'price_sensitive': '#ff8800',
-                        'requesting_visit':'#4285f4',
-                        'not_interested':  '#ff4444'
+                        'interested':       '#00c851',
+                        'needs_more_info':  '#ffaa00',
+                        'price_sensitive':  '#ff8800',
+                        'requesting_visit': '#4285f4',
+                        'not_interested':   '#ff4444'
                     }
 
                     for reply in auto_replies:
-                        scenario      = reply.get('reply_scenario', '')
+                        scenario      = str(reply.get('reply_scenario', ''))
                         scenario_col  = scenario_colors.get(scenario, '#7a8ba0')
                         escalate      = reply.get('escalate_to_human', False)
-                        company       = reply.get('company', 'Unknown')
-                        client_reply  = reply.get('simulated_client_reply', '')
-                        wa_resp       = reply.get('auto_response_whatsapp', '')
-                        next_act      = reply.get('next_action', '')
-                        esc_reason    = reply.get('escalation_reason', '')
+                        company       = str(reply.get('company', 'Unknown'))
+                        client_reply  = str(reply.get('simulated_client_reply', ''))
+                        wa_resp       = str(reply.get('auto_response_whatsapp', ''))
+                        next_act      = str(reply.get('next_action', ''))
+                        esc_reason    = str(reply.get('escalation_reason', ''))
                         escalate_html = (
                             '<span style="background:#1a0a0a;color:#ff4444;border:1px solid #ff4444;'
                             'padding:3px 10px;border-radius:10px;font-size:0.72rem;font-weight:700;">ESCALATE TO HUMAN</span>'
@@ -883,7 +776,6 @@ if run_pipeline:
                             '<p style="color:#ff8800;font-size:0.8rem;margin-top:6px;">Escalation Reason: ' + esc_reason + '</p>'
                             if escalate else ''
                         )
-
                         st.markdown(
                             '<div class="lead-card" style="border-color:#1a3a0a;">'
                             '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
@@ -908,18 +800,16 @@ if run_pipeline:
                             '</div></div>',
                             unsafe_allow_html=True
                         )
-
                 except Exception as e:
                     st.error("Auto-Responder Error: " + str(e))
 
-        # -- ALL DONE ---------------------------------
+        # ALL DONE
         with pipeline_status_placeholder.container():
             show_agent_pipeline({"gemini": "done", "claude": "done", "gpt": "done", "auto": "done"})
-
         st.balloons()
         st.success("Full Multi-Agent Pipeline Complete! Your leads are researched, analysed, messaged and conversation-ready.")
 
-        # -- DOWNLOADS --------------------------------
+        # DOWNLOADS
         st.markdown("### Export Complete Intelligence Report")
         dl_col1, dl_col2 = st.columns(2)
         with dl_col1:
@@ -947,9 +837,7 @@ if run_pipeline:
                 use_container_width=True
             )
 
-# ---------------------------------------------
-# MANUAL CLIENT REPLY SIMULATION
-# ---------------------------------------------
+# --- MANUAL CLIENT REPLY SIMULATION ---
 if simulate_reply and st.session_state.pipeline_results:
     st.markdown("---")
     st.markdown(
@@ -961,7 +849,6 @@ if simulate_reply and st.session_state.pipeline_results:
         '</div></div>',
         unsafe_allow_html=True
     )
-
     client_reply_input = st.text_area(
         "Paste a client's actual reply here:",
         placeholder="e.g. Hello, we are interested. Can you share more details about pricing and location?",
@@ -991,13 +878,12 @@ if simulate_reply and st.session_state.pipeline_results:
                     "- next_step (string)\n\n"
                     "Start your response with { and end with }"
                 )
-                manual_res  = model.generate_content(manual_prompt)
+                manual_res  = call_gemini_with_retry(model, manual_prompt)
                 manual_data = safe_json_parse(manual_res.text, {})
-
                 if manual_data:
-                    wa_reply  = manual_data.get('whatsapp_reply', '')
-                    em_reply  = manual_data.get('email_reply', '')
-                    next_step = manual_data.get('next_step', '')
+                    wa_reply  = str(manual_data.get('whatsapp_reply', ''))
+                    em_reply  = str(manual_data.get('email_reply', ''))
+                    next_step = str(manual_data.get('next_step', ''))
                     st.markdown(
                         '<div class="autoreply-box">'
                         '<div class="autoreply-label">WhatsApp Auto-Reply for ' + reply_company + '</div>'
@@ -1016,16 +902,13 @@ if simulate_reply and st.session_state.pipeline_results:
                 else:
                     st.warning("Could not parse response. Raw output:")
                     st.text(manual_res.text)
-
             except Exception as e:
                 st.error("Manual reply error: " + str(e))
 
 elif simulate_reply and not st.session_state.pipeline_results:
     st.warning("Run the pipeline first before simulating replies.")
 
-# ---------------------------------------------
-# FOOTER
-# ---------------------------------------------
+# --- FOOTER ---
 st.markdown("---")
 st.markdown(
     '<p style="color:#2a3a4e;font-size:0.8rem;text-align:center;">'
