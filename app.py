@@ -290,18 +290,19 @@ Writes tailored WhatsApp + Email for each lead
 Simulates client reply and generates follow-up
         """)
 st.markdown("---")
-    if st.sidebar.button("Show Available Models"):
+    if st.button("Show Available Models", use_container_width=True):
         try:
             genai.configure(api_key=gemini_key.strip())
             available = [
                 m.name for m in genai.list_models()
                 if 'generateContent' in m.supported_generation_methods
             ]
-            st.sidebar.success("Models on your key:")
+            st.success("Models on your key:")
             for m in available:
-                st.sidebar.write(m)
+                st.write(m)
         except Exception as e:
-            st.sidebar.error(str(e))
+            st.error(str(e))
+
     st.markdown("---")
     if st.button("Logout", use_container_width=True):
         cookie_manager.delete('samketan_user')
