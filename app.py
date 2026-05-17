@@ -289,7 +289,19 @@ Writes tailored WhatsApp + Email for each lead
 **Agent 4 - Gemini Auto-Responder**
 Simulates client reply and generates follow-up
         """)
-
+st.markdown("---")
+    if st.sidebar.button("Show Available Models"):
+        try:
+            genai.configure(api_key=gemini_key.strip())
+            available = [
+                m.name for m in genai.list_models()
+                if 'generateContent' in m.supported_generation_methods
+            ]
+            st.sidebar.success("Models on your key:")
+            for m in available:
+                st.sidebar.write(m)
+        except Exception as e:
+            st.sidebar.error(str(e))
     st.markdown("---")
     if st.button("Logout", use_container_width=True):
         cookie_manager.delete('samketan_user')
@@ -306,25 +318,40 @@ import time
 # ---------------------------------------------
 def get_gemini_model():
     genai.configure(api_key=gemini_key.strip())
-    # Try models in order until one works
-    candidates = [
+    # Fetch live list of available models from YOUR key
+    try:
+        available = [
+            m.name.replace('models/', '')
+            for m in genai.list_models()
+            if 'generateContent' in m.supported_generation_methods
+        ]
+    except Exception:
+        available = []
+
+    # Priority: highest free quota first
+    # gemini-1.5-flash = 1500/day, gemini-2.0-flash = 200/day
+    priority = [
         'gemini-1.5-flash-latest',
         'gemini-1.5-flash',
         'gemini-1.5-flash-001',
-        'gemini-2.0-flash-lite',
+        'gemini-1.5-flash-002',
         'gemini-2.0-flash',
+        'gemini-2.0-flash-lite',
+        'gemini-2.5-flash',
     ]
-    for name in candidates:
-        try:
-            model = genai.GenerativeModel(name)
-            # Quick test to confirm model is accessible
-            model.count_tokens("test")
-            return model, name
-        except Exception:
-            continue
-    # Last resort fallback
-    model = genai.GenerativeModel('gemini-2.0-flash-lite')
-    return model, 'gemini-2.0-flash-lite'
+
+    selected = None
+    for name in priority:
+        if name in available:
+            selected = name
+            break
+
+    # If nothing matched, just try first available
+    if not selected:
+        selected = available[0] if available else 'gemini-1.5-flash-latest'
+
+    model = genai.GenerativeModel(selected)
+    return model, selected
 
 # ---------------------------------------------
 # HELPER: CALL GEMINI WITH AUTO-RETRY ON 429
