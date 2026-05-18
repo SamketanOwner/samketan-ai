@@ -301,31 +301,65 @@ def get_gemini_model():
     return genai.GenerativeModel(selected), selected
 
 
-def call_gemini_with_retry(model, prompt, retries=3, wait=60):
-    for attempt in range(retries):
+def call_gemini_with_retry(prompt, retries=6, wait=30):
+    """Try each valid key once, then retry with wait"""
+    errors = []
+    
+    # First pass - try each key once without waiting
+    for key in _valid_keys:
         try:
-            return model.generate_content(prompt)
+            genai.configure(api_key=key.strip())
+            available = [
+                m.name.replace("models/", "")
+                for m in genai.list_models()
+                if "generateContent" in m.supported_generation_methods
+            ]
+            priority = [
+                "gemini-1.5-flash-latest",
+                "gemini-1.5-flash",
+                "gemini-1.5-flash-001",
+                "gemini-1.5-flash-002",
+                "gemini-2.0-flash",
+                "gemini-2.0-flash-lite",
+                "gemini-2.5-flash",
+            ]
+            selected = next((n for n in priority if n in available), available[0] if available else "gemini-1.5-flash-latest")
+            model = genai.GenerativeModel(selected)
+            return model.generate_content(prompt), selected
         except Exception as exc:
-            err = str(exc)
-            if "429" not in err:
-                raise
+            errors.append(str(exc))
+            continue
 
-            if attempt < retries - 1:
-                remaining = retries - attempt - 1
-                st.warning(
-                    "Rate limit hit. Auto-retrying in "
-                    + str(wait)
-                    + " seconds... ("
-                    + str(remaining)
-                    + " retries left)"
-                )
-                time.sleep(wait)
-                continue
+    # Second pass - wait and retry all keys again
+    st.warning("All keys hit rate limit. Waiting 30 seconds then retrying...")
+    time.sleep(wait)
+    
+    for key in _valid_keys:
+        try:
+            genai.configure(api_key=key.strip())
+            available = [
+                m.name.replace("models/", "")
+                for m in genai.list_models()
+                if "generateContent" in m.supported_generation_methods
+            ]
+            priority = [
+                "gemini-1.5-flash-latest",
+                "gemini-1.5-flash",
+                "gemini-1.5-flash-001",
+                "gemini-2.0-flash",
+                "gemini-2.0-flash-lite",
+            ]
+            selected = next((n for n in priority if n in available), available[0] if available else "gemini-1.5-flash-latest")
+            model = genai.GenerativeModel(selected)
+            return model.generate_content(prompt), selected
+        except Exception as exc:
+            errors.append(str(exc))
+            continue
 
-            raise Exception(
-                "All retries exhausted. Please wait a few minutes and try again, "
-                "or create a new Google API key at https://aistudio.google.com/apikey"
-            ) from exc
+    raise Exception(
+        "All " + str(len(_valid_keys)) + " API keys exhausted. "
+        "Errors: " + " | ".join(errors[-3:])
+    )
 
 
 def safe_json_parse(text, default=None):
