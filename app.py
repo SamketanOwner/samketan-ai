@@ -243,7 +243,17 @@ def get_streamlit_secret(key, default=""):
         return default
 
 
-gemini_key = get_streamlit_secret("GOOGLE_API_KEY", "")
+import random
+_all_keys = [
+    get_streamlit_secret("GOOGLE_API_KEY",  ""),
+    get_streamlit_secret("GOOGLE_API_KEY2", ""),
+    get_streamlit_secret("GOOGLE_API_KEY3", ""),
+]
+_valid_keys = [k for k in _all_keys if k.strip()]
+gemini_key  = _valid_keys[0] if _valid_keys else ""
+
+def get_next_key():
+    return random.choice(_valid_keys) if _valid_keys else ""
 
 
 # ---------------------------------------------
@@ -265,7 +275,7 @@ def esc(value):
 
 
 def get_gemini_model():
-    genai.configure(api_key=gemini_key.strip())
+    genai.configure(api_key=get_next_key().strip())
     try:
         available = [
             m.name.replace("models/", "")
