@@ -1,5 +1,6 @@
 import html
 import json
+import random
 import time
 import urllib.parse
 from datetime import datetime
@@ -15,14 +16,11 @@ except ImportError:
         @staticmethod
         def get(key):
             return st.session_state.get(key)
-
         @staticmethod
         def delete(key):
             st.session_state.pop(key, None)
-
     class _FallbackStreamlitComponents:
         CookieManager = _MemoryCookieManager
-
     stx = _FallbackStreamlitComponents()
 
 try:
@@ -34,7 +32,6 @@ except ImportError:
             st.session_state.authenticated = True
             st.session_state.current_user = st.session_state.get("current_user", "User")
             return True
-
     auth = _FallbackAuth()
 
 
@@ -47,13 +44,11 @@ st.set_page_config(
     layout="wide",
 )
 
-
 # ---------------------------------------------
 # AUTHENTICATION
 # ---------------------------------------------
 cookie_manager = stx.CookieManager()
 saved_user = cookie_manager.get("samketan_user")
-
 if saved_user and not st.session_state.get("authenticated"):
     st.session_state.authenticated = True
     st.session_state.current_user = saved_user
@@ -61,25 +56,18 @@ if saved_user and not st.session_state.get("authenticated"):
 if not auth.login_screen():
     st.stop()
 
-
 # ---------------------------------------------
 # GLOBAL CSS
 # ---------------------------------------------
-st.markdown(
-    """
+st.markdown("""
 <style>
     .stApp { background-color: #0a0d14; }
     section[data-testid="stSidebar"] { background-color: #0f1219 !important; }
-
     .header-banner {
         background: linear-gradient(135deg, #0d1117 0%, #0a1929 50%, #0d1117 100%);
-        border: 1px solid #1e3a5f;
-        border-radius: 16px;
-        padding: 28px 36px;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
+        border: 1px solid #1e3a5f; border-radius: 16px;
+        padding: 28px 36px; margin-bottom: 20px;
+        display: flex; align-items: center; justify-content: space-between;
     }
     .header-title { font-size: 2rem; font-weight: 800; color: #fff; margin: 0; }
     .header-sub { font-size: 0.92rem; color: #7a8ba0; margin-top: 6px; }
@@ -88,7 +76,6 @@ st.markdown(
         color: white; padding: 8px 20px; border-radius: 20px;
         font-size: 0.78rem; font-weight: 700; letter-spacing: 1.5px;
     }
-
     .promo-bar {
         background: linear-gradient(90deg,#1a0a00,#2d1500);
         border: 1px solid #FF8C00; border-radius: 8px;
@@ -96,15 +83,10 @@ st.markdown(
         font-size: 14px; color: #FFB347; font-weight: 600;
     }
     .promo-bar a { color: #FFD700; text-decoration: none; font-weight: 700; }
-
     .agent-card {
-        flex: 1; min-width: 200px;
-        background: #0f1219;
-        border: 1px solid #1e2a3e;
-        border-radius: 14px;
-        padding: 18px 20px;
-        text-align: center;
-        transition: all 0.3s ease;
+        flex: 1; min-width: 200px; background: #0f1219;
+        border: 1px solid #1e2a3e; border-radius: 14px;
+        padding: 18px 20px; text-align: center; transition: all 0.3s ease;
     }
     .agent-card.active { border-color: #7b2ff7; box-shadow: 0 0 20px rgba(123,47,247,0.3); }
     .agent-card.done { border-color: #00c851; box-shadow: 0 0 15px rgba(0,200,81,0.2); }
@@ -115,7 +97,6 @@ st.markdown(
     .status-idle { background: #1a1d27; color: #4a5568; }
     .status-running { background: #1a0d2e; color: #a855f7; }
     .status-done { background: #0a1a0a; color: #00c851; }
-
     .input-card {
         background: #0f1219; border: 1px solid #1e2a3e;
         border-radius: 14px; padding: 24px; margin-bottom: 20px;
@@ -126,22 +107,17 @@ st.markdown(
         border: 1px solid #1e2a3e !important;
         color: #e0e6f0 !important; border-radius: 8px !important;
     }
-
     .phase-header {
         background: linear-gradient(90deg, #0a1929, #0d1117);
-        border: 1px solid #1e3a5f;
-        border-left: 4px solid #4285f4;
-        border-radius: 10px;
-        padding: 14px 20px;
-        margin: 20px 0 14px 0;
-        display: flex; align-items: center; gap: 12px;
+        border: 1px solid #1e3a5f; border-left: 4px solid #4285f4;
+        border-radius: 10px; padding: 14px 20px;
+        margin: 20px 0 14px 0; display: flex; align-items: center; gap: 12px;
     }
     .phase-claude { border-left-color: #a855f7 !important; }
     .phase-gpt { border-left-color: #00c851 !important; }
     .phase-auto { border-left-color: #f59e0b !important; }
     .phase-title { font-size: 1rem; font-weight: 700; color: #fff; margin: 0; }
     .phase-sub { font-size: 0.8rem; color: #7a8ba0; margin-top: 2px; }
-
     .lead-card {
         background: #0f1219; border: 1px solid #1e2a3e;
         border-radius: 14px; padding: 20px 24px; margin-bottom: 14px;
@@ -149,19 +125,15 @@ st.markdown(
     .lead-card:hover { border-color: #4285f4; box-shadow: 0 4px 24px rgba(66,133,244,0.15); }
     .lead-name { font-size: 1.05rem; font-weight: 700; color: #fff; margin: 0; }
     .lead-address { font-size: 0.8rem; color: #7a8ba0; margin-top: 4px; }
-
     .badge-hot { background:#1a0a0a; color:#ff4444; border:1px solid #ff4444; padding:4px 12px; border-radius:20px; font-size:0.72rem; font-weight:700; }
     .badge-warm { background:#1a1200; color:#ffaa00; border:1px solid #ffaa00; padding:4px 12px; border-radius:20px; font-size:0.72rem; font-weight:700; }
     .badge-cold { background:#001a2a; color:#0099ff; border:1px solid #0099ff; padding:4px 12px; border-radius:20px; font-size:0.72rem; font-weight:700; }
-
     .strategy-box {
         background: #0a0d14; border: 1px solid #2d1657;
-        border-left: 3px solid #a855f7;
-        border-radius: 10px; padding: 16px 20px; margin: 10px 0;
+        border-left: 3px solid #a855f7; border-radius: 10px; padding: 16px 20px; margin: 10px 0;
     }
     .strategy-title { color: #a855f7; font-weight: 700; font-size: 0.85rem; margin-bottom: 8px; }
     .strategy-text { color: #b0bec5; font-size: 0.84rem; line-height: 1.6; }
-
     .msg-box { background: #0a0d14; border: 1px solid #1e2a3e; border-radius: 10px; padding: 16px; margin: 10px 0; }
     .msg-whatsapp { border-left: 3px solid #25D366; }
     .msg-email { border-left: 3px solid #4285f4; }
@@ -169,54 +141,35 @@ st.markdown(
     .msg-label-wa { color: #25D366; }
     .msg-label-mail { color: #4285f4; }
     .msg-content { color: #b0bec5; font-size: 0.84rem; line-height: 1.6; white-space: pre-wrap; }
-
     .autoreply-box {
         background: #0f1a0f; border: 1px solid #1a3a1a;
-        border-left: 3px solid #00c851;
-        border-radius: 10px; padding: 16px; margin: 10px 0;
+        border-left: 3px solid #00c851; border-radius: 10px; padding: 16px; margin: 10px 0;
     }
     .autoreply-label { color: #00c851; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
     .autoreply-text { color: #b0bec5; font-size: 0.84rem; line-height: 1.6; white-space: pre-wrap; }
-
     .action-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
     .btn-wa { background:#0d2a1a; color:#25D366; border:1px solid #25D366; padding:8px 16px; border-radius:8px; font-size:0.82rem; font-weight:700; text-decoration:none; display:inline-block; }
     .btn-mail { background:#0d1a2a; color:#64b5f6; border:1px solid #64b5f6; padding:8px 16px; border-radius:8px; font-size:0.82rem; font-weight:700; text-decoration:none; display:inline-block; }
     .btn-linkedin { background:#081826; color:#0A66C2; border:1px solid #0A66C2; padding:8px 16px; border-radius:8px; font-size:0.82rem; font-weight:700; text-decoration:none; display:inline-block; }
-
-    .stTabs [data-baseweb="tab-list"] {
-        background: #0f1219 !important; border-radius: 10px; padding: 4px; gap: 4px; border: 1px solid #1e2a3e;
-    }
-    .stTabs [data-baseweb="tab"] {
-        background: transparent !important; color: #7a8ba0 !important;
-        border-radius: 8px !important; font-weight: 600 !important; padding: 10px 20px !important;
-    }
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg,#7b2ff7,#f107a3) !important; color: white !important;
-    }
-
     .stButton > button {
         background: linear-gradient(135deg,#7b2ff7,#f107a3) !important;
         color: white !important; border: none !important;
         border-radius: 10px !important; font-weight: 700 !important;
         font-size: 1rem !important; padding: 14px 32px !important; width: 100% !important;
     }
-
     .conversation-entry {
         background: #0a0d14; border: 1px solid #1e2a3e;
         border-radius: 10px; padding: 14px 18px; margin-bottom: 10px;
     }
     .conv-from { font-size: 0.75rem; color: #7a8ba0; margin-bottom: 6px; }
     .conv-msg { color: #b0bec5; font-size: 0.84rem; line-height: 1.6; }
-
     .user-chip {
         background: #0a0d14; border: 1px solid #1e2a3e;
         border-radius: 8px; padding: 10px 14px; color: #e0e6f0; font-size: 0.88rem; margin-bottom: 12px;
     }
-
     #MainMenu { visibility: hidden; }
     footer { visibility: hidden; }
     header { visibility: hidden; }
-
     [data-testid="stToolbar"] { display: none !important; }
     [data-testid="stDecoration"] { display: none !important; }
     [data-testid="stStatusWidget"] { display: none !important; }
@@ -228,13 +181,11 @@ st.markdown(
     .viewerBadge_link__1S137 { display: none !important; }
     #stDecoration { display: none !important; }
 </style>
-""",
-    unsafe_allow_html=True,
-)
+""", unsafe_allow_html=True)
 
 
 # ---------------------------------------------
-# API KEYS (Gemini only - 100% free tier friendly)
+# API KEYS - Multi-key rotation for max free quota
 # ---------------------------------------------
 def get_streamlit_secret(key, default=""):
     try:
@@ -243,17 +194,13 @@ def get_streamlit_secret(key, default=""):
         return default
 
 
-import random
 _all_keys = [
     get_streamlit_secret("GOOGLE_API_KEY",  ""),
     get_streamlit_secret("GOOGLE_API_KEY2", ""),
     get_streamlit_secret("GOOGLE_API_KEY3", ""),
 ]
-_valid_keys = [k for k in _all_keys if k.strip()]
-gemini_key  = _valid_keys[0] if _valid_keys else ""
-
-def get_next_key():
-    return random.choice(_valid_keys) if _valid_keys else ""
+_valid_keys = [k for k in _all_keys if k and k.strip()]
+gemini_key = _valid_keys[0] if _valid_keys else ""
 
 
 # ---------------------------------------------
@@ -268,14 +215,27 @@ if st.session_state.conversation_log is None:
 
 
 # ---------------------------------------------
-# HELPERS
+# CORE HELPERS
 # ---------------------------------------------
 def esc(value):
     return html.escape(str(value or ""), quote=True)
 
 
-def get_gemini_model():
-    genai.configure(api_key=get_next_key().strip())
+# Model priority - highest free quota first
+_MODEL_PRIORITY = [
+    "gemini-1.5-flash-latest",
+    "gemini-1.5-flash",
+    "gemini-1.5-flash-001",
+    "gemini-1.5-flash-002",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-2.5-flash",
+]
+
+
+def _get_model_for_key(api_key):
+    """Configure a key and return (model, model_name). Raises on failure."""
+    genai.configure(api_key=api_key.strip())
     try:
         available = [
             m.name.replace("models/", "")
@@ -284,82 +244,59 @@ def get_gemini_model():
         ]
     except Exception:
         available = []
-
-    priority = [
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-001",
-        "gemini-1.5-flash-002",
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-lite",
-        "gemini-2.5-flash",
-    ]
-    selected = next((name for name in priority if name in available), None)
+    selected = next((n for n in _MODEL_PRIORITY if n in available), None)
     if not selected:
         selected = available[0] if available else "gemini-1.5-flash-latest"
-
     return genai.GenerativeModel(selected), selected
 
 
-def call_gemini_with_retry(prompt, retries=6, wait=30):
-    """Try each valid key once, then retry with wait"""
+def call_gemini_with_retry(prompt):
+    """
+    Try every valid API key once (first pass).
+    If all fail with 429, wait 30s then try all keys again (second pass).
+    Returns (response, model_name_used).
+    """
+    keys_to_try = list(_valid_keys) if _valid_keys else [gemini_key]
     errors = []
-    
-    # First pass - try each key once without waiting
-    for key in _valid_keys:
+
+    # --- First pass: try each key immediately ---
+    for api_key in keys_to_try:
         try:
-            genai.configure(api_key=key.strip())
-            available = [
-                m.name.replace("models/", "")
-                for m in genai.list_models()
-                if "generateContent" in m.supported_generation_methods
-            ]
-            priority = [
-                "gemini-1.5-flash-latest",
-                "gemini-1.5-flash",
-                "gemini-1.5-flash-001",
-                "gemini-1.5-flash-002",
-                "gemini-2.0-flash",
-                "gemini-2.0-flash-lite",
-                "gemini-2.5-flash",
-            ]
-            selected = next((n for n in priority if n in available), available[0] if available else "gemini-1.5-flash-latest")
-            model = genai.GenerativeModel(selected)
-            return model.generate_content(prompt), selected
+            model, model_name = _get_model_for_key(api_key)
+            response = model.generate_content(prompt)
+            return response, model_name
         except Exception as exc:
             errors.append(str(exc))
             continue
 
-    # Second pass - wait and retry all keys again
-    st.warning("All keys hit rate limit. Waiting 30 seconds then retrying...")
-    time.sleep(wait)
-    
-    for key in _valid_keys:
-        try:
-            genai.configure(api_key=key.strip())
-            available = [
-                m.name.replace("models/", "")
-                for m in genai.list_models()
-                if "generateContent" in m.supported_generation_methods
-            ]
-            priority = [
-                "gemini-1.5-flash-latest",
-                "gemini-1.5-flash",
-                "gemini-1.5-flash-001",
-                "gemini-2.0-flash",
-                "gemini-2.0-flash-lite",
-            ]
-            selected = next((n for n in priority if n in available), available[0] if available else "gemini-1.5-flash-latest")
-            model = genai.GenerativeModel(selected)
-            return model.generate_content(prompt), selected
-        except Exception as exc:
-            errors.append(str(exc))
-            continue
-
-    raise Exception(
-        "All " + str(len(_valid_keys)) + " API keys exhausted. "
-        "Errors: " + " | ".join(errors[-3:])
+    # --- Wait then second pass ---
+    st.warning(
+        "All " + str(len(keys_to_try)) + " API keys hit rate limit. "
+        "Waiting 30 seconds then retrying..."
     )
+    time.sleep(30)
+
+    for api_key in keys_to_try:
+        try:
+            model, model_name = _get_model_for_key(api_key)
+            response = model.generate_content(prompt)
+            return response, model_name
+        except Exception as exc:
+            errors.append(str(exc))
+            continue
+
+    # --- All failed ---
+    raise Exception(
+        "All " + str(len(keys_to_try)) + " API keys exhausted after retrying. "
+        "Please create a new key at https://aistudio.google.com/apikey "
+        "or wait for daily quota reset at midnight PST."
+    )
+
+
+def get_gemini_model():
+    """For sidebar/manual use - returns model from a random valid key."""
+    key = random.choice(_valid_keys) if _valid_keys else gemini_key
+    return _get_model_for_key(key)
 
 
 def safe_json_parse(text, default=None):
@@ -370,7 +307,6 @@ def safe_json_parse(text, default=None):
             clean = parts[1] if len(parts) > 1 else clean
             if clean.lstrip().startswith("json"):
                 clean = clean.lstrip()[4:]
-
         start_arr = clean.find("[")
         start_obj = clean.find("{")
         if start_arr != -1 and (start_obj == -1 or start_arr < start_obj):
@@ -379,7 +315,6 @@ def safe_json_parse(text, default=None):
         elif start_obj != -1:
             end = clean.rfind("}") + 1
             clean = clean[start_obj:end]
-
         return json.loads(clean)
     except Exception:
         return default if default is not None else []
@@ -390,86 +325,65 @@ def parse_leads_table(raw_text):
     for line in str(raw_text or "").split("\n"):
         if "|" not in line or "Company" in line or "---" in line:
             continue
-
         cols = [c.strip() for c in line.strip().strip("|").split("|")]
         if len(cols) < 8:
             continue
-
-        leads.append(
-            {
-                "company": cols[0],
-                "address": cols[1],
-                "website": cols[2],
-                "email": cols[3],
-                "phone": cols[4],
-                "linkedin_profile": cols[5] if len(cols) > 5 else "",
-                "decision_maker_role": cols[6] if len(cols) > 6 else "",
-                "contact_person": cols[7] if len(cols) > 7 else "",
-                "person_linkedin": cols[8] if len(cols) > 8 else "",
-                "why_need": cols[9] if len(cols) > 9 else "",
-                "sector": cols[10] if len(cols) > 10 else "",
-                "deal_size": cols[11] if len(cols) > 11 else "",
-            }
-        )
+        leads.append({
+            "company":            cols[0],
+            "address":            cols[1],
+            "website":            cols[2],
+            "email":              cols[3],
+            "phone":              cols[4],
+            "linkedin_profile":   cols[5] if len(cols) > 5 else "",
+            "decision_maker_role":cols[6] if len(cols) > 6 else "",
+            "contact_person":     cols[7] if len(cols) > 7 else "",
+            "person_linkedin":    cols[8] if len(cols) > 8 else "",
+            "why_need":           cols[9] if len(cols) > 9 else "",
+            "sector":             cols[10] if len(cols) > 10 else "",
+            "deal_size":          cols[11] if len(cols) > 11 else "",
+        })
     return leads
 
 
 def clean_phone_number(phone):
-    clean_phone = "".join(filter(str.isdigit, str(phone or "")))
-    if len(clean_phone) == 10:
-        clean_phone = "91" + clean_phone
-    return clean_phone
+    digits = "".join(filter(str.isdigit, str(phone or "")))
+    if len(digits) == 10:
+        digits = "91" + digits
+    return digits
 
 
 def show_phase_header(css_class, icon_html, title, subtitle):
     st.markdown(
-        '<div class="phase-header '
-        + css_class
-        + '"><span style="font-size:1.5rem">'
-        + icon_html
-        + "</span><div><p class=\"phase-title\">"
-        + esc(title)
-        + '</p><p class="phase-sub">'
-        + esc(subtitle)
-        + "</p></div></div>",
+        '<div class="phase-header ' + css_class + '">'
+        '<span style="font-size:1.5rem">' + icon_html + "</span>"
+        '<div><p class="phase-title">' + esc(title) + "</p>"
+        '<p class="phase-sub">' + esc(subtitle) + "</p></div></div>",
         unsafe_allow_html=True,
     )
 
 
 def show_agent_pipeline(statuses):
     agents = [
-        {"icon": "Search", "name": "Gemini Scout", "role": "Lead Discovery", "key": "gemini"},
-        {"icon": "Brain", "name": "Gemini Strategist", "role": "Strategy & Profiling", "key": "claude"},
-        {"icon": "Mail", "name": "Gemini Communicator", "role": "Message Drafting", "key": "gpt"},
-        {"icon": "Refresh", "name": "Gemini Auto-Reply", "role": "Conversation AI", "key": "auto"},
+        {"icon": "&#128269;", "name": "Gemini Scout",        "role": "Lead Discovery",       "key": "gemini"},
+        {"icon": "&#129504;", "name": "Gemini Strategist",   "role": "Strategy & Profiling",  "key": "claude"},
+        {"icon": "&#9993;",   "name": "Gemini Communicator", "role": "Message Drafting",      "key": "gpt"},
+        {"icon": "&#128260;", "name": "Gemini Auto-Reply",   "role": "Conversation AI",       "key": "auto"},
     ]
-    icons = {"Search": "&#128269;", "Brain": "&#129504;", "Mail": "&#9993;", "Refresh": "&#128260;"}
     cols = st.columns(7)
-
     for i, agent in enumerate(agents):
         status = statuses.get(agent["key"], "idle")
-        card_class = "agent-card active" if status == "running" else ("agent-card done" if status == "done" else "agent-card")
+        card_class   = "agent-card active" if status == "running" else ("agent-card done" if status == "done" else "agent-card")
         status_class = "agent-status status-" + status
         status_label = {"idle": "Idle", "running": "Running...", "done": "Done"}.get(status, "Idle")
-
         with cols[i * 2]:
             st.markdown(
-                '<div class="'
-                + card_class
-                + '"><div class="agent-icon">'
-                + icons.get(agent["icon"], "")
-                + '</div><div class="agent-name">'
-                + esc(agent["name"])
-                + '</div><div class="agent-role">'
-                + esc(agent["role"])
-                + '</div><span class="'
-                + status_class
-                + '">'
-                + status_label
-                + "</span></div>",
+                '<div class="' + card_class + '">'
+                '<div class="agent-icon">' + agent["icon"] + "</div>"
+                '<div class="agent-name">' + esc(agent["name"]) + "</div>"
+                '<div class="agent-role">' + esc(agent["role"]) + "</div>"
+                '<span class="' + status_class + '">' + status_label + "</span></div>",
                 unsafe_allow_html=True,
             )
-
         if i < len(agents) - 1:
             with cols[i * 2 + 1]:
                 st.markdown(
@@ -479,60 +393,37 @@ def show_agent_pipeline(statuses):
 
 
 # ---------------------------------------------
-# AGENTS
+# AGENTS - all use call_gemini_with_retry(prompt) only
 # ---------------------------------------------
 def agent_gemini_scout(region, target_client, my_product, our_product, num_leads):
-    model, selected = get_gemini_model()
     prompt = (
-        "You are a B2B Lead Intelligence Scout. Find "
-        + str(num_leads)
-        + " REAL businesses in "
-        + region
-        + ".\n\n"
-        "TARGET CLIENT TYPE: "
-        + target_client
-        + "\n"
-        "WHAT WE ARE SELLING: "
-        + my_product
-        + "\n"
-        "OUR FULL OFFERING: "
-        + our_product
-        + "\n\n"
+        "You are a B2B Lead Intelligence Scout. Find " + str(num_leads) + " REAL businesses in " + region + ".\n\n"
+        "TARGET CLIENT TYPE: " + target_client + "\n"
+        "WHAT WE ARE SELLING: " + my_product + "\n"
+        "OUR FULL OFFERING: " + our_product + "\n\n"
         "Return ONLY a pipe-separated table with these exact columns:\n"
         "Company Name | Full Address | Website | Email | Phone | Company LinkedIn | Decision Maker Role | Contact Person | Person LinkedIn | Why They Need Us | Industry Sector | Estimated Deal Size\n\n"
         "RULES:\n"
-        "- Make realistic estimates for unknown fields, but do not invent famous people unless likely\n"
+        "- Make realistic estimates for unknown fields\n"
         "- Phone: Indian format with +91 when possible\n"
         "- Email: realistic business format if unknown\n"
-        "- LinkedIn fields: provide likely public LinkedIn company/person URL, or LinkedIn search URL if exact URL is unknown\n"
-        "- Contact Person: include a likely decision maker name when available, otherwise role-based contact\n"
+        "- LinkedIn: provide likely LinkedIn URL or search URL\n"
         "- Why They Need Us: 1-2 specific sentences\n"
         "- Estimated Deal Size: e.g. Rs.2-5 Lakh/month\n"
         "- NO markdown, NO headers, ONLY table rows\n"
     )
-    response = call_gemini_with_retry(model, prompt)
-    return response.text, selected
+    response, model_name = call_gemini_with_retry(prompt)
+    return response.text, model_name
 
 
 def agent_gemini_strategist(raw_leads_data, our_product, our_company, my_product, reply_tone):
-    model, _ = get_gemini_model()
     prompt = (
         "You are a senior business growth strategist. Analyze the raw lead dataset below.\n\n"
-        "Raw Leads Data:\n"
-        + raw_leads_data
-        + "\n\n"
-        "Our Company: "
-        + our_company
-        + "\n"
-        "Our Offering: "
-        + our_product
-        + "\n"
-        "Product We Sell: "
-        + my_product
-        + "\n"
-        "Outreach Tone: "
-        + reply_tone
-        + "\n\n"
+        "Raw Leads Data:\n" + raw_leads_data + "\n\n"
+        "Our Company: " + our_company + "\n"
+        "Our Offering: " + our_product + "\n"
+        "Product We Sell: " + my_product + "\n"
+        "Outreach Tone: " + reply_tone + "\n\n"
         "CRITICAL: Return ONLY a valid JSON array. No markdown. No backticks. No explanation.\n"
         "Each object MUST have these exact keys:\n"
         "- company (string)\n"
@@ -551,36 +442,21 @@ def agent_gemini_strategist(raw_leads_data, our_product, our_company, my_product
         "- recommended_approach (string)\n\n"
         "Start your response with [ and end with ]"
     )
-    response = call_gemini_with_retry(model, prompt)
+    response, _ = call_gemini_with_retry(prompt)
     return response.text
 
 
 def agent_gemini_communicator(strategy_data, leads_data, our_product, our_company, our_contact, our_email, reply_tone):
-    model, _ = get_gemini_model()
     prompt = (
-        "You are an expert B2B sales communicator for "
-        + our_company
-        + ".\n\n"
-        "OUR OFFERING: "
-        + our_product
-        + "\n"
-        "OUR CONTACT: "
-        + our_contact
-        + "\n"
-        "OUR EMAIL: "
-        + our_email
-        + "\n"
-        "COMMUNICATION TONE: "
-        + reply_tone
-        + "\n\n"
-        "ORIGINAL LEAD CONTACT DATA:\n"
-        + json.dumps(leads_data, indent=2)
-        + "\n\n"
-        "STRATEGIC ANALYSIS FOR EACH LEAD:\n"
-        + json.dumps(strategy_data, indent=2)
-        + "\n\n"
+        "You are an expert B2B sales communicator for " + our_company + ".\n\n"
+        "OUR OFFERING: " + our_product + "\n"
+        "OUR CONTACT: " + our_contact + "\n"
+        "OUR EMAIL: " + our_email + "\n"
+        "COMMUNICATION TONE: " + reply_tone + "\n\n"
+        "ORIGINAL LEAD CONTACT DATA:\n" + json.dumps(leads_data, indent=2) + "\n\n"
+        "STRATEGIC ANALYSIS FOR EACH LEAD:\n" + json.dumps(strategy_data, indent=2) + "\n\n"
         "For each lead write:\n"
-        "1. A WhatsApp message (max 200 words, conversational, mentions their pain point, our solution, clear CTA)\n"
+        "1. A WhatsApp message (max 200 words, conversational, mentions pain point, solution, clear CTA)\n"
         "2. A professional Email (Subject + Body, max 300 words, formal but warm)\n"
         "3. A short LinkedIn connection note (under 300 characters)\n\n"
         "CRITICAL: Return ONLY a valid JSON array. No markdown. No backticks. No explanation.\n"
@@ -599,48 +475,25 @@ def agent_gemini_communicator(strategy_data, leads_data, our_product, our_compan
         "- follow_up_day (string)\n\n"
         "Start your response with [ and end with ]"
     )
-    response = call_gemini_with_retry(model, prompt)
+    response, _ = call_gemini_with_retry(prompt)
     return response.text
 
 
 def agent_gemini_autoresponder(lead_data, strategy, messages, our_product, our_company, reply_tone):
-    model, _ = get_gemini_model()
     prompt = (
-        "You are simulating an autonomous sales conversation system for "
-        + our_company
-        + ".\n\n"
-        "OUR OFFERING: "
-        + our_product
-        + "\n"
-        "COMMUNICATION TONE: "
-        + reply_tone
-        + "\n\n"
+        "You are simulating an autonomous sales conversation system for " + our_company + ".\n\n"
+        "OUR OFFERING: " + our_product + "\n"
+        "COMMUNICATION TONE: " + reply_tone + "\n\n"
         "LEAD CONTEXT:\n"
-        "- Company: "
-        + str(lead_data.get("company", "Unknown"))
-        + "\n"
-        "- Contact: "
-        + str(lead_data.get("contact_person", "Unknown"))
-        + "\n"
-        "- LinkedIn: "
-        + str(lead_data.get("person_linkedin", ""))
-        + "\n"
-        "- Priority: "
-        + str(strategy.get("priority", "WARM"))
-        + "\n"
-        "- Pain Points: "
-        + str(strategy.get("pain_points", []))
-        + "\n"
-        "- Our Value Prop: "
-        + str(strategy.get("our_value_prop", ""))
-        + "\n\n"
+        "- Company: " + str(lead_data.get("company", "Unknown")) + "\n"
+        "- Contact: " + str(lead_data.get("contact_person", "Unknown")) + "\n"
+        "- LinkedIn: " + str(lead_data.get("person_linkedin", "")) + "\n"
+        "- Priority: " + str(strategy.get("priority", "WARM")) + "\n"
+        "- Pain Points: " + str(strategy.get("pain_points", [])) + "\n"
+        "- Our Value Prop: " + str(strategy.get("our_value_prop", "")) + "\n\n"
         "INITIAL MESSAGE WE SENT:\n"
-        "WhatsApp: "
-        + str(messages.get("whatsapp_message", ""))
-        + "\n"
-        "LinkedIn Note: "
-        + str(messages.get("linkedin_note", ""))
-        + "\n\n"
+        "WhatsApp: " + str(messages.get("whatsapp_message", "")) + "\n"
+        "LinkedIn Note: " + str(messages.get("linkedin_note", "")) + "\n\n"
         "TASK: Simulate TWO things:\n"
         "1. A realistic client reply\n"
         "2. Our intelligent automated reply to their simulated response\n\n"
@@ -655,15 +508,14 @@ def agent_gemini_autoresponder(lead_data, strategy, messages, our_product, our_c
         "- escalation_reason (string)\n\n"
         "Start your response with { and end with }"
     )
-    response = call_gemini_with_retry(model, prompt)
+    response, _ = call_gemini_with_retry(prompt)
     return response.text
 
 
 # ---------------------------------------------
 # HEADER
 # ---------------------------------------------
-st.markdown(
-    """
+st.markdown("""
 <div class="header-banner">
     <div>
         <p class="header-title">Samketan AI v7.0</p>
@@ -674,19 +526,14 @@ st.markdown(
     </div>
     <span class="header-badge">MULTI-AGENT</span>
 </div>
-""",
-    unsafe_allow_html=True,
-)
+""", unsafe_allow_html=True)
 
-st.markdown(
-    """
+st.markdown("""
 <div class="promo-bar">
     AVAILABLE FOR LEASE: Premium 21,000 Sq. Ft. RCC Warehouse - Nandur Area, Gulbarga
     <a href="https://bhoodeviwarehouse.netlify.app/" target="_blank"> Visit Bhoodevi Warehouse</a>
 </div>
-""",
-    unsafe_allow_html=True,
-)
+""", unsafe_allow_html=True)
 
 
 # ---------------------------------------------
@@ -695,15 +542,13 @@ st.markdown(
 with st.sidebar:
     st.markdown("### Samketan Profile")
     st.markdown(
-        '<div class="user-chip">User: '
-        + esc(st.session_state.get("current_user", "User"))
-        + "</div>",
+        '<div class="user-chip">User: ' + esc(st.session_state.get("current_user", "User")) + "</div>",
         unsafe_allow_html=True,
     )
 
     st.markdown("---")
-    st.markdown("### API Key")
-    st.caption("Auto-loaded from Streamlit Secrets.")
+    st.markdown("### API Keys")
+    st.caption("Auto-loaded from Streamlit Secrets. Keys used: " + str(len(_valid_keys)))
     if not gemini_key:
         gemini_key = st.text_input("Google Gemini Key", type="password", placeholder="AIza...")
 
@@ -720,7 +565,7 @@ with st.sidebar:
     )
     our_company = st.text_input("Company Name", value="Samketan / Bhoodevi Warehouse")
     our_contact = st.text_input("Our Contact", value="+91-XXXXXXXXXX")
-    our_email = st.text_input("Our Email", value="samketan@example.com")
+    our_email   = st.text_input("Our Email", value="samketan@example.com")
 
     st.markdown("---")
     st.markdown("### Auto-Reply Settings")
@@ -729,8 +574,7 @@ with st.sidebar:
 
     st.markdown("---")
     with st.expander("How Multi-Agent Works"):
-        st.markdown(
-            """
+        st.markdown("""
 **Agent 1 - Gemini Scout**
 Finds real business leads with contact details and LinkedIn profiles
 
@@ -738,23 +582,24 @@ Finds real business leads with contact details and LinkedIn profiles
 Analyses each lead, creates personalised strategy
 
 **Agent 3 - Gemini Communicator**
-Writes tailored WhatsApp, Email and LinkedIn notes for each lead
+Writes tailored WhatsApp, Email and LinkedIn notes
 
 **Agent 4 - Gemini Auto-Responder**
 Simulates client reply and generates follow-up
-"""
-        )
+        """)
 
     st.markdown("---")
     if st.button("Show Available Models", use_container_width=True):
         try:
-            genai.configure(api_key=gemini_key.strip())
+            key_to_check = _valid_keys[0] if _valid_keys else gemini_key
+            genai.configure(api_key=key_to_check.strip())
             available_models = [
-                m.name for m in genai.list_models() if "generateContent" in m.supported_generation_methods
+                m.name for m in genai.list_models()
+                if "generateContent" in m.supported_generation_methods
             ]
             st.success("Models on your key:")
-            for model_name in available_models:
-                st.write(model_name)
+            for mn in available_models:
+                st.write(mn)
         except Exception as e:
             st.error(str(e))
 
@@ -772,21 +617,20 @@ st.markdown('<div class="input-card">', unsafe_allow_html=True)
 st.markdown("### Define Your Target")
 col1, col2, col3 = st.columns(3)
 with col1:
-    my_product = st.text_input("Product / Service to Sell", value="Warehouse Space")
-    region = st.text_input("Target City / Region", value="Gulbarga, Karnataka")
+    my_product    = st.text_input("Product / Service to Sell", value="Warehouse Space")
+    region        = st.text_input("Target City / Region", value="Gulbarga, Karnataka")
 with col2:
     target_client = st.text_input("Ideal Client Type", value="FMCG Distributors, Pharma Companies")
-    num_leads = st.slider("Number of Leads to Find", 3, 10, 5)
+    num_leads     = st.slider("Number of Leads to Find", 3, 10, 5)
 with col3:
-    scope = st.radio("Market Scope", ["Local (Domestic)", "Export (International)"])
+    scope   = st.radio("Market Scope", ["Local (Domestic)", "Export (International)"])
     urgency = st.selectbox("Deal Urgency", ["High - Close this month", "Medium - Next quarter", "Low - Exploring"])
 st.markdown("</div>", unsafe_allow_html=True)
-
 st.markdown("---")
 
 
 # ---------------------------------------------
-# PIPELINE STATUS PLACEHOLDER
+# PIPELINE STATUS
 # ---------------------------------------------
 pipeline_status_placeholder = st.empty()
 with pipeline_status_placeholder.container():
@@ -805,7 +649,7 @@ st.markdown("---")
 # PIPELINE EXECUTION
 # ---------------------------------------------
 if run_pipeline:
-    if not gemini_key:
+    if not _valid_keys and not gemini_key:
         st.error("Missing GOOGLE_API_KEY. Add it to Streamlit Secrets.")
     elif not my_product or not region or not target_client:
         st.warning("Please fill in Product, Region, and Client Type.")
@@ -813,15 +657,12 @@ if run_pipeline:
         st.session_state.pipeline_results = {}
         st.session_state.conversation_log = []
 
+        # PHASE 1: SCOUT
         with pipeline_status_placeholder.container():
             show_agent_pipeline({"gemini": "running", "claude": "idle", "gpt": "idle", "auto": "idle"})
-
-        show_phase_header(
-            "",
-            "&#128269;",
+        show_phase_header("", "&#128269;",
             "Phase 1: Gemini Scout - Live Lead Discovery",
-            "Scanning for real businesses that match your target profile",
-        )
+            "Scanning for real businesses that match your target profile")
 
         with st.spinner("Gemini is scanning for genuine leads..."):
             try:
@@ -830,30 +671,12 @@ if run_pipeline:
                 leads_list = parse_leads_table(raw_leads)
                 st.session_state.leads_data = leads_list
                 st.success("Gemini (" + model_used + ") found " + str(len(leads_list)) + " leads")
-
                 if leads_list:
                     df_display = pd.DataFrame(leads_list)
-                    display_cols = [
-                        "company",
-                        "contact_person",
-                        "decision_maker_role",
-                        "phone",
-                        "email",
-                        "person_linkedin",
-                        "why_need",
-                        "deal_size",
-                    ]
+                    display_cols = ["company", "contact_person", "decision_maker_role", "phone", "email", "person_linkedin", "why_need", "deal_size"]
                     df_display = df_display[[c for c in display_cols if c in df_display.columns]]
-                    df_display.columns = [
-                        "Company",
-                        "Contact",
-                        "Role",
-                        "WhatsApp / Phone",
-                        "Email",
-                        "LinkedIn",
-                        "Why They Need Us",
-                        "Est. Deal",
-                    ][: len(df_display.columns)]
+                    col_labels = ["Company", "Contact", "Role", "Phone", "Email", "LinkedIn", "Why They Need Us", "Est. Deal"]
+                    df_display.columns = col_labels[:len(df_display.columns)]
                     st.dataframe(df_display, use_container_width=True, hide_index=True)
                 else:
                     with st.expander("Raw Gemini Output"):
@@ -862,88 +685,51 @@ if run_pipeline:
                 st.error("Gemini Scout Error: " + str(e))
                 st.stop()
 
+        # PHASE 2: STRATEGIST
         with pipeline_status_placeholder.container():
             show_agent_pipeline({"gemini": "done", "claude": "running", "gpt": "idle", "auto": "idle"})
-
-        show_phase_header(
-            "phase-claude",
-            "&#129504;",
+        show_phase_header("phase-claude", "&#129504;",
             "Phase 2: Gemini Strategist - Deep Analysis and Personalization",
-            "Analysing each lead's business, pain points and crafting targeted strategy",
-        )
+            "Analysing each lead and crafting targeted strategy")
 
         with st.spinner("Gemini is strategizing for each lead..."):
             try:
-                strategy_raw = agent_gemini_strategist(
+                strategy_raw  = agent_gemini_strategist(
                     st.session_state.pipeline_results.get("gemini_raw", ""),
-                    our_product,
-                    our_company,
-                    my_product,
-                    reply_tone,
-                )
+                    our_product, our_company, my_product, reply_tone)
                 strategy_list = safe_json_parse(strategy_raw, [])
                 st.session_state.pipeline_results["strategy"] = strategy_list
                 st.success("Gemini analysed " + str(len(strategy_list)) + " leads with strategic scoring")
 
-                for strategy in strategy_list:
-                    priority = strategy.get("priority", "WARM")
+                for s in strategy_list:
+                    priority    = s.get("priority", "WARM")
                     badge_class = "badge-hot" if priority == "HOT" else ("badge-cold" if priority == "COLD" else "badge-warm")
-                    pain_items = "".join(["<li>" + esc(p) + "</li>" for p in strategy.get("pain_points", [])])
-
+                    pain_items  = "".join(["<li>" + esc(p) + "</li>" for p in s.get("pain_points", [])])
                     st.markdown(
                         '<div class="lead-card">'
                         '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">'
-                        "<div>"
-                        '<p class="lead-name">'
-                        + esc(strategy.get("company", "Unknown"))
-                        + "</p>"
-                        '<p class="lead-address">Contact: '
-                        + esc(strategy.get("contact_person", ""))
-                        + " | Score: "
-                        + esc(strategy.get("deal_score", 0))
-                        + "/100</p>"
-                        "</div>"
-                        '<span class="'
-                        + badge_class
-                        + '">'
-                        + esc(priority)
-                        + "</span>"
-                        "</div>"
-                        '<div class="strategy-box">'
-                        '<div class="strategy-title">Strategic Value Proposition</div>'
-                        '<div class="strategy-text">'
-                        + esc(strategy.get("our_value_prop", ""))
-                        + "</div></div>"
+                        '<div><p class="lead-name">' + esc(s.get("company", "Unknown")) + "</p>"
+                        '<p class="lead-address">Contact: ' + esc(s.get("contact_person", "")) + " | Score: " + esc(s.get("deal_score", 0)) + "/100</p></div>"
+                        '<span class="' + badge_class + '">' + esc(priority) + "</span></div>"
+                        '<div class="strategy-box"><div class="strategy-title">Strategic Value Proposition</div>'
+                        '<div class="strategy-text">' + esc(s.get("our_value_prop", "")) + "</div></div>"
                         '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;">'
                         '<div style="flex:1;min-width:160px;">'
                         '<p style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;">Pain Points</p>'
-                        '<ul style="color:#b0bec5;font-size:0.82rem;margin:4px 0;padding-left:16px;">'
-                        + pain_items
-                        + "</ul></div>"
+                        '<ul style="color:#b0bec5;font-size:0.82rem;margin:4px 0;padding-left:16px;">' + pain_items + "</ul></div>"
                         '<div style="flex:1;min-width:160px;">'
                         '<p style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;">Opening Hook</p>'
-                        '<p style="color:#e0e6f0;font-size:0.84rem;font-style:italic;">'
-                        + esc(strategy.get("opening_hook", ""))
-                        + "</p></div>"
+                        '<p style="color:#e0e6f0;font-size:0.84rem;font-style:italic;">' + esc(s.get("opening_hook", "")) + "</p></div>"
                         '<div style="flex:1;min-width:160px;">'
                         '<p style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;">LinkedIn Note Angle</p>'
-                        '<p style="color:#b0bec5;font-size:0.82rem;">'
-                        + esc(strategy.get("linkedin_connection_note", ""))
-                        + "</p></div></div>"
+                        '<p style="color:#b0bec5;font-size:0.82rem;">' + esc(s.get("linkedin_connection_note", "")) + "</p></div></div>"
                         '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #1e2a3e;display:flex;gap:20px;flex-wrap:wrap;">'
-                        '<span style="font-size:0.8rem;color:#7a8ba0;">Value: '
-                        + esc(strategy.get("estimated_value", ""))
-                        + "</span>"
-                        '<span style="font-size:0.8rem;color:#7a8ba0;">Urgency: '
-                        + esc(strategy.get("urgency_signal", ""))
-                        + "</span>"
-                        '<span style="font-size:0.8rem;color:#7a8ba0;">Approach: '
-                        + esc(strategy.get("recommended_approach", ""))
-                        + "</span>"
+                        '<span style="font-size:0.8rem;color:#7a8ba0;">Value: ' + esc(s.get("estimated_value", "")) + "</span>"
+                        '<span style="font-size:0.8rem;color:#7a8ba0;">Urgency: ' + esc(s.get("urgency_signal", "")) + "</span>"
+                        '<span style="font-size:0.8rem;color:#7a8ba0;">Approach: ' + esc(s.get("recommended_approach", "")) + "</span>"
                         "</div></div>",
                         unsafe_allow_html=True,
                     )
-
                 if not strategy_list:
                     with st.expander("Raw Strategy Output"):
                         st.text(strategy_raw)
@@ -951,98 +737,61 @@ if run_pipeline:
                 st.error("Gemini Strategist Error: " + str(e))
                 st.stop()
 
+        # PHASE 3: COMMUNICATOR
         with pipeline_status_placeholder.container():
             show_agent_pipeline({"gemini": "done", "claude": "done", "gpt": "running", "auto": "idle"})
-
-        show_phase_header(
-            "phase-gpt",
-            "&#9993;",
+        show_phase_header("phase-gpt", "&#9993;",
             "Phase 3: Gemini Communicator - Personalized Outreach Messages",
-            "Writing WhatsApp, Email and LinkedIn outreach for each lead based on strategy",
-        )
+            "Writing WhatsApp, Email and LinkedIn outreach for each lead")
 
         with st.spinner("Gemini is crafting personalized messages..."):
             try:
                 strategy_list = st.session_state.pipeline_results.get("strategy", [])
-                leads_list = st.session_state.leads_data or []
-                messages_raw = agent_gemini_communicator(
-                    strategy_list,
-                    leads_list,
-                    our_product,
-                    our_company,
-                    our_contact,
-                    our_email,
-                    reply_tone,
-                )
+                leads_list    = st.session_state.leads_data or []
+                messages_raw  = agent_gemini_communicator(
+                    strategy_list, leads_list, our_product, our_company, our_contact, our_email, reply_tone)
                 messages_list = safe_json_parse(messages_raw, [])
                 st.session_state.pipeline_results["messages"] = messages_list
                 st.success("Gemini drafted " + str(len(messages_list)) + " personalized outreach sets")
 
                 for idx, msg in enumerate(messages_list):
-                    phone = msg.get("phone", "")
-                    email_to = msg.get("email", "")
-                    wa_text = msg.get("whatsapp_message", "")
-                    email_sub = msg.get("email_subject", "")
-                    email_body = msg.get("email_body", "")
-                    linkedin_note = msg.get("linkedin_note", "")
-                    person_linkedin = msg.get("person_linkedin", "")
-                    company = msg.get("company", "Lead " + str(idx + 1))
-                    best_time = msg.get("best_time_to_contact", "Weekday morning")
-                    follow_up = msg.get("follow_up_day", "3 days")
+                    phone           = str(msg.get("phone", ""))
+                    email_to        = str(msg.get("email", ""))
+                    wa_text         = str(msg.get("whatsapp_message", ""))
+                    email_sub       = str(msg.get("email_subject", ""))
+                    email_body      = str(msg.get("email_body", ""))
+                    linkedin_note   = str(msg.get("linkedin_note", ""))
+                    person_linkedin = str(msg.get("person_linkedin", ""))
+                    company         = str(msg.get("company", "Lead " + str(idx + 1)))
+                    best_time       = str(msg.get("best_time_to_contact", "Weekday morning"))
+                    follow_up       = str(msg.get("follow_up_day", "3 days"))
 
-                    clean_phone = clean_phone_number(phone)
-                    wa_link = "https://wa.me/" + clean_phone + "?text=" + urllib.parse.quote(wa_text)
-                    mail_link = (
-                        "mailto:"
-                        + email_to
-                        + "?subject="
-                        + urllib.parse.quote(email_sub)
-                        + "&body="
-                        + urllib.parse.quote(email_body)
-                    )
-                    linkedin_link = person_linkedin or (
+                    clean_ph  = clean_phone_number(phone)
+                    wa_link   = "https://wa.me/" + clean_ph + "?text=" + urllib.parse.quote(wa_text)
+                    mail_link = "mailto:" + email_to + "?subject=" + urllib.parse.quote(email_sub) + "&body=" + urllib.parse.quote(email_body)
+                    li_link   = person_linkedin or (
                         "https://www.linkedin.com/search/results/people/?keywords="
-                        + urllib.parse.quote(str(msg.get("contact_person", "")) + " " + str(company))
+                        + urllib.parse.quote(str(msg.get("contact_person", "")) + " " + company)
                     )
 
                     st.markdown(
                         '<div class="lead-card" style="border-color:#1a4a1a;">'
                         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
-                        '<p class="lead-name">'
-                        + esc(company)
-                        + "</p>"
-                        '<span style="font-size:0.78rem;color:#7a8ba0;">Best Time: '
-                        + esc(best_time)
-                        + " | Follow-up: "
-                        + esc(follow_up)
-                        + "</span></div>"
+                        '<p class="lead-name">' + esc(company) + "</p>"
+                        '<span style="font-size:0.78rem;color:#7a8ba0;">Best Time: ' + esc(best_time) + " | Follow-up: " + esc(follow_up) + "</span></div>"
                         '<div class="msg-box msg-whatsapp"><div class="msg-label msg-label-wa">WhatsApp Message</div>'
-                        '<div class="msg-content">'
-                        + esc(wa_text)
-                        + "</div></div>"
-                        '<div class="msg-box msg-email"><div class="msg-label msg-label-mail">Email - Subject: '
-                        + esc(email_sub)
-                        + '</div><div class="msg-content">'
-                        + esc(email_body)
-                        + "</div></div>"
+                        '<div class="msg-content">' + esc(wa_text) + "</div></div>"
+                        '<div class="msg-box msg-email"><div class="msg-label msg-label-mail">Email - Subject: ' + esc(email_sub) + "</div>"
+                        '<div class="msg-content">' + esc(email_body) + "</div></div>"
                         '<div class="msg-box"><div class="msg-label" style="color:#0A66C2;">LinkedIn Connection Note</div>'
-                        '<div class="msg-content">'
-                        + esc(linkedin_note)
-                        + "</div></div>"
+                        '<div class="msg-content">' + esc(linkedin_note) + "</div></div>"
                         '<div class="action-row">'
-                        '<a class="btn-wa" href="'
-                        + esc(wa_link)
-                        + '" target="_blank">Send on WhatsApp</a>'
-                        '<a class="btn-mail" href="'
-                        + esc(mail_link)
-                        + '" target="_blank">Open Email Draft</a>'
-                        '<a class="btn-linkedin" href="'
-                        + esc(linkedin_link)
-                        + '" target="_blank">Open LinkedIn</a>'
+                        '<a class="btn-wa"       href="' + esc(wa_link)   + '" target="_blank">Send on WhatsApp</a>'
+                        '<a class="btn-mail"     href="' + esc(mail_link) + '" target="_blank">Open Email Draft</a>'
+                        '<a class="btn-linkedin" href="' + esc(li_link)   + '" target="_blank">Open LinkedIn</a>'
                         "</div></div>",
                         unsafe_allow_html=True,
                     )
-
                 if not messages_list:
                     with st.expander("Raw Messages Output"):
                         st.text(messages_raw)
@@ -1050,37 +799,28 @@ if run_pipeline:
                 st.error("Gemini Communicator Error: " + str(e))
                 st.stop()
 
+        # PHASE 4: AUTO-RESPONDER
         if auto_reply_enabled:
             with pipeline_status_placeholder.container():
                 show_agent_pipeline({"gemini": "done", "claude": "done", "gpt": "done", "auto": "running"})
-
-            show_phase_header(
-                "phase-auto",
-                "&#128260;",
+            show_phase_header("phase-auto", "&#128260;",
                 "Phase 4: Gemini Auto-Responder - Simulated Conversation Intelligence",
-                "AI simulates client reply and generates smart automated follow-up",
-            )
+                "AI simulates client reply and generates smart automated follow-up")
 
             with st.spinner("Auto-Responder generating conversation simulations..."):
                 try:
                     strategy_list = st.session_state.pipeline_results.get("strategy", [])
                     messages_list = st.session_state.pipeline_results.get("messages", [])
-                    hot_leads = [s for s in strategy_list if s.get("priority") in ["HOT", "WARM"]][:3]
-                    auto_replies = []
+                    hot_leads     = [s for s in strategy_list if s.get("priority") in ["HOT", "WARM"]][:3]
+                    auto_replies  = []
 
                     for i, lead_strategy in enumerate(hot_leads):
                         matching_msg = next(
                             (m for m in messages_list if m.get("company") == lead_strategy.get("company")),
                             messages_list[i] if i < len(messages_list) else {},
                         )
-                        auto_raw = agent_gemini_autoresponder(
-                            matching_msg,
-                            lead_strategy,
-                            matching_msg,
-                            our_product,
-                            our_company,
-                            reply_tone,
-                        )
+                        auto_raw  = agent_gemini_autoresponder(
+                            matching_msg, lead_strategy, matching_msg, our_product, our_company, reply_tone)
                         auto_data = safe_json_parse(auto_raw, {})
                         if auto_data:
                             auto_data["company"] = lead_strategy.get("company", "Lead " + str(i + 1))
@@ -1090,72 +830,55 @@ if run_pipeline:
                     st.success("Auto-Responder simulated " + str(len(auto_replies)) + " conversation threads")
 
                     scenario_colors = {
-                        "interested": "#00c851",
-                        "needs_more_info": "#ffaa00",
-                        "price_sensitive": "#ff8800",
-                        "requesting_visit": "#4285f4",
+                        "interested": "#00c851", "needs_more_info": "#ffaa00",
+                        "price_sensitive": "#ff8800", "requesting_visit": "#4285f4",
                         "not_interested": "#ff4444",
                     }
 
                     for reply in auto_replies:
-                        scenario = reply.get("reply_scenario", "")
+                        scenario     = str(reply.get("reply_scenario", ""))
                         scenario_col = scenario_colors.get(scenario, "#7a8ba0")
-                        escalate = reply.get("escalate_to_human", False)
+                        escalate     = reply.get("escalate_to_human", False)
                         escalate_html = (
                             '<span style="background:#1a0a0a;color:#ff4444;border:1px solid #ff4444;'
                             'padding:3px 10px;border-radius:10px;font-size:0.72rem;font-weight:700;">ESCALATE TO HUMAN</span>'
-                            if escalate
-                            else '<span style="background:#0a1a0a;color:#00c851;border:1px solid #00c851;'
+                            if escalate else
+                            '<span style="background:#0a1a0a;color:#00c851;border:1px solid #00c851;'
                             'padding:3px 10px;border-radius:10px;font-size:0.72rem;font-weight:700;">AUTO-HANDLED</span>'
                         )
                         esc_reason_html = (
                             '<p style="color:#ff8800;font-size:0.8rem;margin-top:6px;">Escalation Reason: '
-                            + esc(reply.get("escalation_reason", ""))
-                            + "</p>"
-                            if escalate
-                            else ""
+                            + esc(reply.get("escalation_reason", "")) + "</p>"
+                            if escalate else ""
                         )
-
                         st.markdown(
                             '<div class="lead-card" style="border-color:#1a3a0a;">'
                             '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
-                            '<p class="lead-name">'
-                            + esc(reply.get("company", "Unknown"))
-                            + "</p>"
+                            '<p class="lead-name">' + esc(reply.get("company", "Unknown")) + "</p>"
                             '<div style="display:flex;gap:10px;align-items:center;">'
-                            '<span style="color:'
-                            + scenario_col
-                            + ';font-size:0.8rem;font-weight:700;text-transform:uppercase;">'
-                            + esc(str(scenario).replace("_", " "))
-                            + "</span>"
-                            + escalate_html
-                            + "</div></div>"
+                            '<span style="color:' + scenario_col + ';font-size:0.8rem;font-weight:700;text-transform:uppercase;">'
+                            + esc(scenario.replace("_", " ")) + "</span>" + escalate_html + "</div></div>"
                             '<div class="conversation-entry"><div class="conv-from">Simulated Client Reply:</div>'
                             '<div class="conv-msg" style="color:#e0e6f0;font-style:italic;">'
-                            + esc(reply.get("simulated_client_reply", ""))
-                            + "</div></div>"
+                            + esc(reply.get("simulated_client_reply", "")) + "</div></div>"
                             '<div class="autoreply-box"><div class="autoreply-label">Our Automated WhatsApp Reply</div>'
-                            '<div class="autoreply-text">'
-                            + esc(reply.get("auto_response_whatsapp", ""))
-                            + "</div></div>"
+                            '<div class="autoreply-text">' + esc(reply.get("auto_response_whatsapp", "")) + "</div></div>"
                             '<div style="margin-top:10px;padding:10px;background:#0a0d14;border:1px solid #1e2a3e;border-radius:8px;">'
                             '<p style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Next Action for Sales Team</p>'
-                            '<p style="color:#b0bec5;font-size:0.84rem;">'
-                            + esc(reply.get("next_action", ""))
-                            + "</p>"
-                            + esc_reason_html
-                            + "</div></div>",
+                            '<p style="color:#b0bec5;font-size:0.84rem;">' + esc(reply.get("next_action", "")) + "</p>"
+                            + esc_reason_html + "</div></div>",
                             unsafe_allow_html=True,
                         )
                 except Exception as e:
                     st.error("Auto-Responder Error: " + str(e))
 
+        # ALL DONE
         with pipeline_status_placeholder.container():
             show_agent_pipeline({"gemini": "done", "claude": "done", "gpt": "done", "auto": "done"})
-
         st.balloons()
         st.success("Full Multi-Agent Pipeline Complete! Your leads are researched, analysed, messaged and conversation-ready.")
 
+        # DOWNLOADS
         st.markdown("### Export Complete Intelligence Report")
         dl_col1, dl_col2 = st.columns(2)
         with dl_col1:
@@ -1166,27 +889,19 @@ if run_pipeline:
                     "Download Leads CSV",
                     data=df_leads.to_csv(index=False).encode("utf-8"),
                     file_name="samketan_leads_" + region.replace(",", "_").replace(" ", "_") + ".csv",
-                    mime="text/csv",
-                    use_container_width=True,
+                    mime="text/csv", use_container_width=True,
                 )
         with dl_col2:
             full_report = {
                 "generated_at": datetime.now().isoformat(),
-                "inputs": {
-                    "product": my_product,
-                    "region": region,
-                    "target_client": target_client,
-                    "scope": scope,
-                    "urgency": urgency,
-                },
+                "inputs": {"product": my_product, "region": region, "target_client": target_client, "scope": scope, "urgency": urgency},
                 "pipeline_results": st.session_state.pipeline_results,
             }
             st.download_button(
                 "Download Full JSON Report",
                 data=json.dumps(full_report, indent=2, default=str).encode("utf-8"),
                 file_name="samketan_full_report_" + region.replace(",", "_").replace(" ", "_") + ".json",
-                mime="application/json",
-                use_container_width=True,
+                mime="application/json", use_container_width=True,
             )
 
 
@@ -1195,12 +910,8 @@ if run_pipeline:
 # ---------------------------------------------
 if simulate_reply and st.session_state.pipeline_results:
     st.markdown("---")
-    show_phase_header(
-        "phase-auto",
-        "&#128172;",
-        "Manual Reply Simulation",
-        "Enter a client reply and see AI auto-response",
-    )
+    show_phase_header("phase-auto", "&#128172;",
+        "Manual Reply Simulation", "Enter a client reply and see AI auto-response")
 
     client_reply_input = st.text_area(
         "Paste a client's actual reply here:",
@@ -1212,23 +923,12 @@ if simulate_reply and st.session_state.pipeline_results:
     if st.button("Generate Smart Auto-Reply") and client_reply_input:
         with st.spinner("Generating intelligent response..."):
             try:
-                model, _ = get_gemini_model()
                 manual_prompt = (
-                    "You are the sales AI for "
-                    + our_company
-                    + ".\n\n"
-                    "OUR OFFERING: "
-                    + our_product
-                    + "\n"
-                    "TONE: "
-                    + reply_tone
-                    + "\n"
-                    "COMPANY THAT REPLIED: "
-                    + reply_company
-                    + "\n\n"
-                    "CLIENT REPLIED: "
-                    + client_reply_input
-                    + "\n\n"
+                    "You are the sales AI for " + our_company + ".\n\n"
+                    "OUR OFFERING: " + our_product + "\n"
+                    "TONE: " + reply_tone + "\n"
+                    "COMPANY THAT REPLIED: " + reply_company + "\n\n"
+                    "CLIENT REPLIED: " + client_reply_input + "\n\n"
                     "Write a professional, helpful response that:\n"
                     "1. Directly addresses their message\n"
                     "2. Provides relevant details from our offering\n"
@@ -1241,28 +941,19 @@ if simulate_reply and st.session_state.pipeline_results:
                     "- next_step (string)\n\n"
                     "Start your response with { and end with }"
                 )
-                manual_res = call_gemini_with_retry(model, manual_prompt)
-                manual_data = safe_json_parse(manual_res.text, {})
+                manual_res, _ = call_gemini_with_retry(manual_prompt)
+                manual_data   = safe_json_parse(manual_res.text, {})
 
                 if manual_data:
                     st.markdown(
-                        '<div class="autoreply-box">'
-                        '<div class="autoreply-label">WhatsApp Auto-Reply for '
-                        + esc(reply_company)
-                        + "</div>"
-                        '<div class="autoreply-text">'
-                        + esc(manual_data.get("whatsapp_reply", ""))
-                        + "</div></div>"
-                        '<div class="msg-box msg-email">'
-                        '<div class="msg-label msg-label-mail">Email Auto-Reply</div>'
-                        '<div class="msg-content">'
-                        + esc(manual_data.get("email_reply", ""))
-                        + "</div></div>"
+                        '<div class="autoreply-box"><div class="autoreply-label">WhatsApp Auto-Reply for '
+                        + esc(reply_company) + "</div>"
+                        '<div class="autoreply-text">' + esc(manual_data.get("whatsapp_reply", "")) + "</div></div>"
+                        '<div class="msg-box msg-email"><div class="msg-label msg-label-mail">Email Auto-Reply</div>'
+                        '<div class="msg-content">' + esc(manual_data.get("email_reply", "")) + "</div></div>"
                         '<div style="background:#0a0d14;border:1px solid #1e2a3e;border-radius:8px;padding:12px 16px;margin-top:10px;">'
                         '<p style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Recommended Next Step</p>'
-                        '<p style="color:#b0bec5;font-size:0.84rem;">'
-                        + esc(manual_data.get("next_step", ""))
-                        + "</p></div>",
+                        '<p style="color:#b0bec5;font-size:0.84rem;">' + esc(manual_data.get("next_step", "")) + "</p></div>",
                         unsafe_allow_html=True,
                     )
                 else:
