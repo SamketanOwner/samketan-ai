@@ -221,82 +221,69 @@ def esc(value):
     return html.escape(str(value or ""), quote=True)
 
 
-# Model priority - highest free quota first
+# FIXED: Refined to rock-solid production IDs. Eliminated legacy strings like 'gemini-1.5-flash-latest'
 _MODEL_PRIORITY = [
-    "gemini-1.5-flash-latest",
     "gemini-1.5-flash",
-    "gemini-1.5-flash-001",
-    "gemini-1.5-flash-002",
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite",
     "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite"
 ]
 
 
-def _get_model_for_key(api_key):
-    """Configure a key and return (model, model_name). Raises on failure."""
+def _get_model_for_key(api_key, index=0):
+    """Fallback router optimized to ignore broken list_models connections"""
     genai.configure(api_key=api_key.strip())
-    try:
-        available = [
-            m.name.replace("models/", "")
-            for m in genai.list_models()
-            if "generateContent" in m.supported_generation_methods
-        ]
-    except Exception:
-        available = []
-    selected = next((n for n in _MODEL_PRIORITY if n in available), None)
-    if not selected:
-        selected = available[0] if available else "gemini-1.5-flash-latest"
-    return genai.GenerativeModel(selected), selected
+    # Alternate drivers inside priority matrix depending on key rotation positions
+    selected_model = _MODEL_PRIORITY[index % len(_MODEL_PRIORITY)]
+    return genai.GenerativeModel(selected_model), selected_model
 
 
 def call_gemini_with_retry(prompt):
     """
     Try every valid API key once (first pass).
-    If all fail with 429, wait 30s then try all keys again (second pass).
+    If all fail with true rate limits, wait 30s then try keys again (second pass).
     Returns (response, model_name_used).
     """
     keys_to_try = list(_valid_keys) if _valid_keys else [gemini_key]
+    if not keys_to_try or not keys_to_try[0]:
+        raise Exception("No valid API Key detected. Please input your keys securely.")
+        
     errors = []
 
-    # --- First pass: try each key immediately ---
-    for api_key in keys_to_try:
+    # --- First pass: try each key immediately with alternative model indexing ---
+    for idx, api_key in enumerate(keys_to_try):
         try:
-            model, model_name = _get_model_for_key(api_key)
+            model, model_name = _get_model_for_key(api_key, idx)
             response = model.generate_content(prompt)
             return response, model_name
         except Exception as exc:
-            errors.append(str(exc))
+            errors.append(f"Key_{idx} Layout Failure: {str(exc)}")
             continue
 
     # --- Wait then second pass ---
-    st.warning(
-        "All " + str(len(keys_to_try)) + " API keys hit rate limit. "
-        "Waiting 30 seconds then retrying..."
-    )
+    st.warning(f"All {len(keys_to_try)} API keys experienced pipeline strain. Retrying in 30 seconds...")
     time.sleep(30)
 
-    for api_key in keys_to_try:
+    for idx, api_key in enumerate(keys_to_try):
         try:
-            model, model_name = _get_model_for_key(api_key)
+            model, model_name = _get_model_for_key(api_key, idx + 1) # Shift index to try alternate framework model
             response = model.generate_content(prompt)
             return response, model_name
         except Exception as exc:
-            errors.append(str(exc))
+            errors.append(f"Retry_Key_{idx} Failure: {str(exc)}")
             continue
 
     # --- All failed ---
     raise Exception(
-        "All " + str(len(keys_to_try)) + " API keys exhausted after retrying. "
-        "Please create a new key at https://aistudio.google.com/apikey "
-        "or wait for daily quota reset at midnight PST."
+        f"All {len(keys_to_try)} API keys exhausted after tracking passes. Errors observed: {errors}. "
+        "Please create fresh keys at https://aistudio.google.com/apikey"
     )
 
 
 def get_gemini_model():
     """For sidebar/manual use - returns model from a random valid key."""
     key = random.choice(_valid_keys) if _valid_keys else gemini_key
-    return _get_model_for_key(key)
+    return _get_model_for_key(key, 0)
 
 
 def safe_json_parse(text, default=None):
@@ -336,10 +323,10 @@ def parse_leads_table(raw_text):
             "phone":              cols[4],
             "linkedin_profile":   cols[5] if len(cols) > 5 else "",
             "decision_maker_role":cols[6] if len(cols) > 6 else "",
-            "contact_person":     cols[7] if len(cols) > 7 else "",
+            "contact_person":      cols[7] if len(cols) > 7 else "",
             "person_linkedin":    cols[8] if len(cols) > 8 else "",
-            "why_need":           cols[9] if len(cols) > 9 else "",
-            "sector":             cols[10] if len(cols) > 10 else "",
+            "why_need":            cols[9] if len(cols) > 9 else "",
+            "sector":              cols[10] if len(cols) > 10 else "",
             "deal_size":          cols[11] if len(cols) > 11 else "",
         })
     return leads
@@ -357,7 +344,7 @@ def show_phase_header(css_class, icon_html, title, subtitle):
         '<div class="phase-header ' + css_class + '">'
         '<span style="font-size:1.5rem">' + icon_html + "</span>"
         '<div><p class="phase-title">' + esc(title) + "</p>"
-        '<p class="phase-sub">' + esc(subtitle) + "</p></div></div>",
+        '<p class="phase-sub">' + esc(subtitle) + "</p></div></div>',
         unsafe_allow_html=True,
     )
 
@@ -530,7 +517,7 @@ st.markdown("""
 
 st.markdown("""
 <div class="promo-bar">
-    AVAILABLE FOR LEASE: Premium 21,000 Sq. Ft. RCC Warehouse - Nandur Area, Gulbarga
+    AVAILABLE FOR LEASE: Premium 21,000 Sq. Ft. RCC Warehouse - Nandur Industrial Area, Gulbarga (Kalaburagi).
     <a href="https://bhoodeviwarehouse.netlify.app/" target="_blank"> Visit Bhoodevi Warehouse</a>
 </div>
 """, unsafe_allow_html=True)
@@ -548,7 +535,7 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### API Keys")
-    st.caption("Auto-loaded from Streamlit Secrets. Keys used: " + str(len(_valid_keys)))
+    st.caption("Auto-loaded keys active: " + str(len(_valid_keys)))
     if not gemini_key:
         gemini_key = st.text_input("Google Gemini Key", type="password", placeholder="AIza...")
 
@@ -559,7 +546,7 @@ with st.sidebar:
         value=(
             "Premium 21,000 sq ft RCC warehouse in Nandur Area, Gulbarga. "
             "Features: 24/7 security, loading docks, fire safety, power backup. "
-            "Ideal for FMCG, pharma, agri storage."
+            "Ideal for FMCG, pharma, agri storage processing."
         ),
         height=120,
     )
@@ -587,21 +574,6 @@ Writes tailored WhatsApp, Email and LinkedIn notes
 **Agent 4 - Gemini Auto-Responder**
 Simulates client reply and generates follow-up
         """)
-
-    st.markdown("---")
-    if st.button("Show Available Models", use_container_width=True):
-        try:
-            key_to_check = _valid_keys[0] if _valid_keys else gemini_key
-            genai.configure(api_key=key_to_check.strip())
-            available_models = [
-                m.name for m in genai.list_models()
-                if "generateContent" in m.supported_generation_methods
-            ]
-            st.success("Models on your key:")
-            for mn in available_models:
-                st.write(mn)
-        except Exception as e:
-            st.error(str(e))
 
     st.markdown("---")
     if st.button("Logout", use_container_width=True):
