@@ -221,19 +221,19 @@ def esc(value):
     return html.escape(str(value or ""), quote=True)
 
 
-# FIXED: Refined to rock-solid production IDs. Eliminated legacy strings like 'gemini-1.5-flash-latest'
+# ─────────────────────────────────────────────
+# MODEL SELECTION ENGINE
+# ─────────────────────────────────────────────
+# FIXED: Replaced retired 1.5 variants with active GA Lite endpoints to capture the high free limits
 _MODEL_PRIORITY = [
-    "gemini-1.5-flash",
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-lite"
+    "gemini-2.5-flash-lite",  # Unlocks high volume requests (1,500 Daily RPD)
+    "gemini-2.0-flash-lite",  # Secondary stable high-capacity driver
+    "gemini-2.5-flash"        # Standard reasoning backup
 ]
 
-
 def _get_model_for_key(api_key, index=0):
-    """Fallback router optimized to ignore broken list_models connections"""
+    """Configures key routing matrix safely without listing dependency exceptions"""
     genai.configure(api_key=api_key.strip())
-    # Alternate drivers inside priority matrix depending on key rotation positions
     selected_model = _MODEL_PRIORITY[index % len(_MODEL_PRIORITY)]
     return genai.GenerativeModel(selected_model), selected_model
 
