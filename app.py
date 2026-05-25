@@ -550,10 +550,10 @@ with st.sidebar:
         ),
         height=120,
     )
-    our_company = st.text_input("Company Name", value="Samketan / Bhoodevi Warehouse")
-    our_contact = st.text_input("Our Contact", value="+91-XXXXXXXXXX")
-    our_email   = st.text_input("Our Email", value="samketan@example.com")
-
+    our_company = st.text_input("Company Name", value="Bhoodevi Warehouse")
+    our_contact = st.text_input("Our Contact", value="+91-9880888056")
+    our_email   = st.text_input("Our Email", value="sanjayhg@bhoodeviwarehouse.com")
+    our_website = st.text_input("Our Website", value="www.bhoodeviwarehouse.com")
     st.markdown("---")
     st.markdown("### Auto-Reply Settings")
     auto_reply_enabled = st.toggle("Enable Auto-Reply Simulation", value=True)
