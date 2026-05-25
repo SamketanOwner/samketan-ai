@@ -433,18 +433,19 @@ def agent_gemini_strategist(raw_leads_data, our_product, our_company, my_product
     return response.text
 
 
-def agent_gemini_communicator(strategy_data, leads_data, our_product, our_company, our_contact, our_email, reply_tone):
+def agent_gemini_communicator(strategy_data, leads_data, our_product, our_company, our_contact, our_email, our_website, reply_tone):
     prompt = (
         "You are an expert B2B sales communicator for " + our_company + ".\n\n"
         "OUR OFFERING: " + our_product + "\n"
         "OUR CONTACT: " + our_contact + "\n"
         "OUR EMAIL: " + our_email + "\n"
+        "OUR WEBSITE: " + our_website + "\n"
         "COMMUNICATION TONE: " + reply_tone + "\n\n"
         "ORIGINAL LEAD CONTACT DATA:\n" + json.dumps(leads_data, indent=2) + "\n\n"
         "STRATEGIC ANALYSIS FOR EACH LEAD:\n" + json.dumps(strategy_data, indent=2) + "\n\n"
         "For each lead write:\n"
         "1. A WhatsApp message (max 200 words, conversational, mentions pain point, solution, clear CTA)\n"
-        "2. A professional Email (Subject + Body, max 300 words, formal but warm)\n"
+        "2. A professional Email (Subject + Body, max 300 words, formal but warm). CRITICAL: Explicitly include our website URL " + our_website + " naturally inside the body text or signature so clients can view our layout and certificates.\n"
         "3. A short LinkedIn connection note (under 300 characters)\n\n"
         "CRITICAL: Return ONLY a valid JSON array. No markdown. No backticks. No explanation.\n"
         "Each object MUST have these exact keys:\n"
