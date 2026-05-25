@@ -466,38 +466,37 @@ def agent_gemini_communicator(strategy_data, leads_data, our_product, our_compan
     response, _ = call_gemini_with_retry(prompt)
     return response.text
 
+def send_live_hostinger_email(lead_email, subject, body_text):
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    import os
 
-def agent_gemini_autoresponder(lead_data, strategy, messages, our_product, our_company, reply_tone):
-    prompt = (
-        "You are simulating an autonomous sales conversation system for " + our_company + ".\n\n"
-        "OUR OFFERING: " + our_product + "\n"
-        "COMMUNICATION TONE: " + reply_tone + "\n\n"
-        "LEAD CONTEXT:\n"
-        "- Company: " + str(lead_data.get("company", "Unknown")) + "\n"
-        "- Contact: " + str(lead_data.get("contact_person", "Unknown")) + "\n"
-        "- LinkedIn: " + str(lead_data.get("person_linkedin", "")) + "\n"
-        "- Priority: " + str(strategy.get("priority", "WARM")) + "\n"
-        "- Pain Points: " + str(strategy.get("pain_points", [])) + "\n"
-        "- Our Value Prop: " + str(strategy.get("our_value_prop", "")) + "\n\n"
-        "INITIAL MESSAGE WE SENT:\n"
-        "WhatsApp: " + str(messages.get("whatsapp_message", "")) + "\n"
-        "LinkedIn Note: " + str(messages.get("linkedin_note", "")) + "\n\n"
-        "TASK: Simulate TWO things:\n"
-        "1. A realistic client reply\n"
-        "2. Our intelligent automated reply to their simulated response\n\n"
-        "CRITICAL: Return ONLY a valid JSON object. No markdown. No backticks. No explanation.\n"
-        "The object MUST have these exact keys:\n"
-        "- simulated_client_reply (string)\n"
-        "- reply_scenario (string: interested / needs_more_info / price_sensitive / requesting_visit / not_interested)\n"
-        "- auto_response_whatsapp (string)\n"
-        "- auto_response_email (string)\n"
-        "- next_action (string)\n"
-        "- escalate_to_human (boolean)\n"
-        "- escalation_reason (string)\n\n"
-        "Start your response with { and end with }"
-    )
-    response, _ = call_gemini_with_retry(prompt)
-    return response.text
+    smtp_server = "smtp.hostinger.com"
+    port = 465  # Secure SSL port
+    
+    sender_email = os.getenv("EMAIL_USER", "sanjayhg@bhoodeviwarehouse.com")
+    sender_password = os.getenv("EMAIL_PASSWORD")
+    
+    if not sender_password:
+        if "EMAIL_PASSWORD" in os.environ:
+            sender_password = os.environ["EMAIL_PASSWORD"]
+        else:
+            return "Missing Password Configuration"
+
+    message = MIMEMultipart()
+    message["From"] = f"Bhoodevi Warehouse <{sender_email}>"
+    message["To"] = lead_email
+    message["Subject"] = subject
+    message.attach(MIMEText(body_text, "plain"))
+
+    try:
+        with smtplib.SMTP_SSL(smtp_server, port) as server:
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, lead_email, message.as_string())
+        return "Success"
+    except Exception as e:
+        return str(e)
 
 
 # ---------------------------------------------
