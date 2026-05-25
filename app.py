@@ -433,7 +433,7 @@ def agent_gemini_strategist(raw_leads_data, our_product, our_company, my_product
     return response.text
 
 
-def agent_gemini_communicator(strategy_data, leads_data, our_product, our_company, our_contact, our_email, our_website, reply_tone):
+def agent_gemini_communicator(strategy_data, leads_data, our_product, our_company, our_contact, our_website, our_email, reply_tone):
     prompt = (
         "You are an expert B2B sales communicator for " + our_company + ".\n\n"
         "OUR OFFERING: " + our_product + "\n"
