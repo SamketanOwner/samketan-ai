@@ -807,7 +807,7 @@ if run_pipeline:
                             messages_list[i] if i < len(messages_list) else {},
                         )
                         auto_raw  = agent_gemini_autoresponder(
-                            matching_msg, lead_strategy, matching_msg, our_product, our_company, reply_tone)
+                            lead_strategy, lead_strategy, matching_msg, our_product, our_company, reply_tone)
                         auto_data = safe_json_parse(auto_raw, {})
                         if auto_data:
                             auto_data["company"] = lead_strategy.get("company", "Lead " + str(i + 1))
