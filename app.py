@@ -519,7 +519,7 @@ st.markdown("""
 st.markdown("""
 <div class="promo-bar">
     AVAILABLE FOR LEASE: Premium 21,000 Sq. Ft. RCC Warehouse - Nandur Industrial Area, Gulbarga (Kalaburagi).
-    <a href="https://bhoodeviwarehouse.netlify.app/" target="_blank"> Visit Bhoodevi Warehouse</a>
+    <a href="https://www.bhoodeviwarehouse.com/" target="_blank"> Visit Bhoodevi Warehouse</a>
 </div>
 """, unsafe_allow_html=True)
 
