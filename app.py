@@ -722,7 +722,7 @@ if run_pipeline:
                 strategy_list = st.session_state.pipeline_results.get("strategy", [])
                 leads_list    = st.session_state.leads_data or []
                 messages_raw  = agent_gemini_communicator(
-                    strategy_list, leads_list, our_product, our_company, our_contact, our_email, reply_tone)
+                    strategy_list, leads_list, our_product, our_company, our_contact, our_website, our_email, reply_tone)
                 messages_list = safe_json_parse(messages_raw, [])
                 st.session_state.pipeline_results["messages"] = messages_list
                 st.success("Gemini drafted " + str(len(messages_list)) + " personalized outreach sets")
