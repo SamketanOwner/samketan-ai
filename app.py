@@ -476,13 +476,15 @@ def send_live_hostinger_email(lead_email, subject, body_text):
     message = MIMEMultipart()
     message["From"] = f"Bhoodevi Warehouse <{sender_email}>"
     message["To"] = lead_email
+    message["Bcc"] = sender_email
     message["Subject"] = subject
     message.attach(MIMEText(body_text, "plain"))
 
     try:
         with smtplib.SMTP_SSL(smtp_server, port) as server:
             server.login(sender_email, sender_password)
-            server.sendmail(sender_email, lead_email, message.as_string())
+            # Updated to pass both the lead email and your email as a list
+            server.sendmail(sender_email, [lead_email, sender_email], message.as_string())
         return "Success"
     except Exception as e:
         return str(e)
