@@ -807,7 +807,12 @@ if run_pipeline:
                     
                     # --- NEW LIVE AUTOMATION BUTTON FOR EACH LEAD (FIXED INDENTATION & VARIABLE) ---
                     button_key = f"send_auto_email_{company.replace(' ', '_')}_{idx}"
-                    if st.button(f"🚀 Dispatch Automated Email to {company}", key=button_key):
+                   st.button(
+    f"🚀 Dispatch Automated Email to {company}", 
+    key=button_key, 
+    on_click=handle_email_dispatch, 
+    args=(email_to, email_subject, email_body, company)
+)
                         with st.spinner(f"Routing secure outbound connection to {email_to}..."):
                             status = send_live_hostinger_email(email_to, email_sub, email_body)
                             if status == "Success":
