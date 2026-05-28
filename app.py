@@ -498,6 +498,15 @@ def send_live_hostinger_email(lead_email, subject, body_text):
     except Exception as e:
         return str(e)
 
+# NEW: Prevents page from resetting when clicking dispatch email
+def handle_email_dispatch(lead_email, subject, body_text, company_name):
+    import streamlit as st
+    status = send_live_hostinger_email(lead_email, subject, body_text)
+    if status == "Success":
+        st.toast(f"✅ Email sent successfully to {company_name}!", icon="🚀")
+    else:
+        st.error(f"❌ Failed to send to {company_name}: {status}")
+
 def agent_gemini_autoresponder(lead_data, strategy, messages, our_product, our_company, reply_tone):
     prompt = (
         "You are simulating an autonomous sales conversation system for " + our_company + ".\n\n"
