@@ -805,7 +805,7 @@ if run_pipeline:
                         unsafe_allow_html=True,
                     )
                     
-                # --- NEW LIVE AUTOMATION BUTTON FOR EACH LEAD (FIXED INDENTATION & VARIABLE) ---
+                    # --- NEW LIVE AUTOMATION BUTTON FOR EACH LEAD (FIXED INDENTATION & VARIABLE) ---
                     button_key = f"send_auto_email_{company.replace(' ', '_')}_{idx}"
                     st.button(
                         f"🚀 Dispatch Automated Email to {company}", 
@@ -813,14 +813,6 @@ if run_pipeline:
                         on_click=handle_email_dispatch, 
                         args=(email_to, email_sub, email_body, company)
                     )
-                        with st.spinner(f"Routing secure outbound connection to {email_to}..."):
-                            status = send_live_hostinger_email(email_to, email_sub, email_body)
-                            if status == "Success":
-                                st.success(f"✅ Email successfully delivered to the Inbox of {company} ({email_to})!")
-                            elif status == "Missing Password Configuration":
-                                st.error("❌ Transmission Failed: EMAIL_PASSWORD configuration not found in your operational environment variables.")
-                            else:
-                                st.error(f"❌ Hostinger Server Error: {status}")
                     st.markdown("<br>", unsafe_allow_html=True)
                     # -------------------------------------------------------------------------------
 
