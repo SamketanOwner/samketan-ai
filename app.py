@@ -823,8 +823,10 @@ if run_pipeline:
                 st.error("Gemini Communicator Error: " + str(e))
                 st.stop()
 
-        # PHASE 4: AUTO-RESPONDER
-        if auto_reply_enabled:
+       # PHASE 4: AUTO-RESPONDER
+    if auto_reply_enabled:
+        # 1. GENERATION PHASE (Only runs during active execution loop)
+        if "auto_replies" not in st.session_state.pipeline_results:
             with pipeline_status_placeholder.container():
                 show_agent_pipeline({"gemini": "done", "claude": "done", "gpt": "done", "auto": "running"})
             show_phase_header("phase-auto", "&#128260;",
@@ -852,49 +854,53 @@ if run_pipeline:
 
                     st.session_state.pipeline_results["auto_replies"] = auto_replies
                     st.success("Auto-Responder simulated " + str(len(auto_replies)) + " conversation threads")
-
-                    scenario_colors = {
-                        "interested": "#00c851", "needs_more_info": "#ffaa00",
-                        "price_sensitive": "#ff8800", "requesting_visit": "#4285f4",
-                        "not_interested": "#ff4444",
-                    }
-
-                    for reply in auto_replies:
-                        scenario     = str(reply.get("reply_scenario", ""))
-                        scenario_col = scenario_colors.get(scenario, "#7a8ba0")
-                        escalate     = reply.get("escalate_to_human", False)
-                        escalate_html = (
-                            '<span style="background:#1a0a0a;color:#ff4444;border:1px solid #ff4444;'
-                            'padding:3px 10px;border-radius:10px;font-size:0.72rem;font-weight:700;">ESCALATE TO HUMAN</span>'
-                            if escalate else
-                            '<span style="background:#0a1a0a;color:#00c851;border:1px solid #00c851;'
-                            'padding:3px 10px;border-radius:10px;font-size:0.72rem;font-weight:700;">AUTO-HANDLED</span>'
-                        )
-                        esc_reason_html = (
-                            '<p style="color:#ff8800;font-size:0.8rem;margin-top:6px;">Escalation Reason: '
-                            + esc(reply.get("escalation_reason", "")) + "</p>"
-                            if escalate else ""
-                        )
-                        st.markdown(
-                            '<div class="lead-card" style="border-color:#1a3a0a;">'
-                            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
-                            '<p class="lead-name">' + esc(reply.get("company", "Unknown")) + "</p>"
-                            '<div style="display:flex;gap:10px;align-items:center;">'
-                            '<span style="color:' + scenario_col + ';font-size:0.8rem;font-weight:700;text-transform:uppercase;">'
-                            + esc(scenario.replace("_", " ")) + "</span>" + escalate_html + "</div></div>"
-                            '<div class="conversation-entry"><div class="conv-from">Simulated Client Reply:</div>'
-                            '<div class="conv-msg" style="color:#e0e6f0;font-style:italic;">'
-                            + esc(reply.get("simulated_client_reply", "")) + "</div></div>"
-                            '<div class="autoreply-box"><div class="autoreply-label">Our Automated WhatsApp Reply</div>'
-                            '<div class="autoreply-text">' + esc(reply.get("auto_response_whatsapp", "")) + "</div></div>"
-                            '<div style="margin-top:10px;padding:10px;background:#0a0d14;border:1px solid #1e2a3e;border-radius:8px;">'
-                            '<p style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Next Action for Sales Team</p>'
-                            '<p style="color:#b0bec5;font-size:0.84rem;">' + esc(reply.get("next_action", "")) + "</p>"
-                            + esc_reason_html + "</div></div>",
-                            unsafe_allow_html=True,
-                        )
                 except Exception as e:
                     st.error("Auto-Responder Error: " + str(e))
+
+        # 2. PERSISTENT DISPLAY PHASE (Always runs and keeps data locked on screen)
+        if "auto_replies" in st.session_state.pipeline_results:
+            auto_replies = st.session_state.pipeline_results["auto_replies"]
+            
+            scenario_colors = {
+                "interested": "#00c851", "needs_more_info": "#ffaa00",
+                "price_sensitive": "#ff8800", "requesting_visit": "#4285f4",
+                "not_interested": "#ff4444",
+            }
+
+            for reply in auto_replies:
+                scenario     = str(reply.get("reply_scenario", ""))
+                scenario_col = scenario_colors.get(scenario, "#7a8ba0")
+                escalate     = reply.get("escalate_to_human", False)
+                escalate_html = (
+                    '<span style="background:#1a0a0a;color:#ff4444;border:1px solid #ff4444;'
+                    'padding:3px 10px;border-radius:10px;font-size:0.72rem;font-weight:700;">ESCALATE TO HUMAN</span>'
+                    if escalate else
+                    '<span style="background:#0a1a0a;color:#00c851;border:1px solid #00c851;'
+                    'padding:3px 10px;border-radius:10px;font-size:0.72rem;font-weight:700;">AUTO-HANDLED</span>'
+                )
+                esc_reason_html = (
+                    '<p style="color:#ff8800;font-size:0.8rem;margin-top:6px;">Escalation Reason: '
+                    + esc(reply.get("escalation_reason", "")) + "</p>"
+                    if escalate else ""
+                )
+                st.markdown(
+                    '<div class="lead-card" style="border-color:#1a3a0a;">'
+                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
+                    '<p class="lead-name">' + esc(reply.get("company", "Unknown")) + "</p>"
+                    '<div style="display:flex;gap:10px;align-items:center;">'
+                    '<span style="color:' + scenario_col + ';font-size:0.8rem;font-weight:700;text-transform:uppercase;">'
+                    + esc(scenario.replace("_", " ")) + "</span>" + escalate_html + "</div></div>"
+                    '<div class="conversation-entry"><div class="conv-from">Simulated Client Reply:</div>'
+                    '<div class="conv-msg" style="color:#e0e6f0;font-style:italic;">'
+                    + esc(reply.get("simulated_client_reply", "")) + "</div></div>"
+                    '<div class="autoreply-box"><div class="autoreply-label">Our Automated WhatsApp Reply</div>'
+                    '<div class="autoreply-text">' + esc(reply.get("auto_response_whatsapp", "")) + "</div></div>"
+                    '<div style="margin-top:10px;padding:10px;background:#0a0d14;border:1px solid #1e2a3e;border-radius:8px;">'
+                    '<p style="font-size:0.72rem;color:#4a5568;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Next Action for Sales Team</p>'
+                    '<p style="color:#b0bec5;font-size:0.84rem;">' + esc(reply.get("next_action", "")) + "</p>"
+                    + esc_reason_html + "</div></div>",
+                    unsafe_allow_html=True,
+                )
 
         # ALL DONE
         with pipeline_status_placeholder.container():
