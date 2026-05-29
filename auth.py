@@ -77,6 +77,11 @@ def inject_css(logo_b64=None):
     .block-container {{ padding: 0 !important; max-width: 100% !important; }}
     section[data-testid="stSidebar"] {{ display: none; }}
 
+    /* Hide Manage App button */
+    [data-testid="manage-app-button"],
+    .stDeployButton,
+    div[class*="StatusWidget"] {{ display: none !important; }}
+
     /* Root page background */
     .stApp {{
         background: #f0f2f7 !important;
