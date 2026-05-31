@@ -8,10 +8,11 @@ from datetime import datetime
 import google.generativeai as genai
 import pandas as pd
 import streamlit as st
+import requests
 
 try:
-    import extra_streamlit_components as stx
-except ImportError:
+     extra_streamlit_components as stx
+except NameError:
     class _MemoryCookieManager:
         @staticmethod
         def get(key):
@@ -307,16 +308,15 @@ def parse_leads_table(raw_text):
         leads.append({
             "company":            cols[0],
             "address":            cols[1],
-            "website":            cols[2],
-            "email":              cols[3],
+            "first_name":         cols[2],
+            "last_name":          cols[3],
+            "email":              "Click Extract Real Email Below",
             "phone":              cols[4],
-            "linkedin_profile":   cols[5] if len(cols) > 5 else "",
-            "decision_maker_role":cols[6] if len(cols) > 6 else "",
-            "contact_person":      cols[7] if len(cols) > 7 else "",
-            "person_linkedin":    cols[8] if len(cols) > 8 else "",
-            "why_need":            cols[9] if len(cols) > 9 else "",
-            "sector":              cols[10] if len(cols) > 10 else "",
-            "deal_size":          cols[11] if len(cols) > 11 else "",
+            "decision_maker_role":cols[5] if len(cols) > 5 else "",
+            "why_need":            cols[6] if len(cols) > 6 else "",
+            "sector":              cols[7] if len(cols) > 7 else "",
+            "deal_size":          cols[8] if len(cols) > 8 else "",
+            "person_linkedin":    cols[9] if len(cols) > 9 else "",
         })
     return leads
 
@@ -333,7 +333,7 @@ def show_phase_header(css_class, icon_html, title, subtitle):
         '<div class="phase-header ' + css_class + '">'
         '<span style="font-size:1.5rem">' + icon_html + "</span>"
         '<div><p class="phase-title">' + esc(title) + "</p>"
-        '<p class="phase-sub">' + esc(subtitle) + "</p></div></div>",
+        '<p class="phase-sub">' + esc(subtitle) + "</p></div></div>',
         unsafe_allow_html=True,
     )
 
@@ -369,24 +369,59 @@ def show_agent_pipeline(statuses):
 
 
 # ---------------------------------------------
+# AUTOMATED DATA ENRICHMENT (BARDEEN / HUNTER)
+# ---------------------------------------------
+def get_bardeen_style_email(first_name, last_name, company_name):
+    """
+    Bardeen-style automation feature to extract and verify a real 
+    corporate email based on person name and company domain.
+    """
+    api_key = st.secrets.get("HUNTER_API_KEY", "")
+    if not api_key:
+        return None
+
+    # Clean and format the company name into a standard web domain
+    clean_domain = company_name.lower().replace("limited", "").replace("ltd", "").replace("pvt", "").replace(" ", "").strip()
+    
+    # Mapping corrections for major industries
+    if "ceat" in clean_domain: clean_domain = "ceat.com"
+    elif "apollo" in clean_domain: clean_domain = "apollotyres.com"
+    elif "mrf" in clean_domain: clean_domain = "mrftyres.com"
+    elif "bridgestone" in clean_domain: clean_domain = "bridgestone.co.in"
+    elif "goodyear" in clean_domain: clean_domain = "goodyear.com"
+    else:
+        clean_domain = f"{clean_domain}.com"
+
+    url = f"https://api.hunter.io/v2/email-finder?domain={clean_domain}&first_name={first_name}&last_name={last_name}&api_key={api_key}"
+    
+    try:
+        response = requests.get(url, timeout=10).json()
+        if response.get("data") and response["data"].get("email"):
+            return response["data"]["email"]
+    except Exception:
+        pass
+        
+    return None
+
+
+# ---------------------------------------------
 # AGENTS
 # ---------------------------------------------
 def agent_gemini_scout(region, target_client, my_product, our_product, num_leads):
     prompt = (
-        "You are a B2B Lead Intelligence Scout. Find " + str(num_leads) + " REAL businesses in " + region + ".\n\n"
+        "You are a B2B Lead Intelligence Scout. Find " + str(num_leads) + " REAL corporate regional/national businesses operating or expanding in " + region + ".\n\n"
         "TARGET CLIENT TYPE: " + target_client + "\n"
         "WHAT WE ARE SELLING: " + my_product + "\n"
         "OUR FULL OFFERING: " + our_product + "\n\n"
         "Return ONLY a pipe-separated table with these exact columns:\n"
-        "Company Name | Full Address | Website | Email | Phone | Company LinkedIn | Decision Maker Role | Contact Person | Person LinkedIn | Why They Need Us | Industry Sector | Estimated Deal Size\n\n"
-        "RULES:\n"
-        "- Make realistic estimates for unknown fields\n"
-        "- Phone: Indian format with +91 when possible\n"
-        "- Email: realistic business format if unknown\n"
-        "- LinkedIn: provide likely LinkedIn URL or search URL\n"
-        "- Why They Need Us: 1-2 specific sentences\n"
-        "- Estimated Deal Size: e.g. Rs.2-5 Lakh/month\n"
-        "- NO markdown, NO headers, ONLY table rows\n"
+        "Company Name | Full Address | Manager First Name | Manager Last Name | Phone | Decision Maker Role | Why They Need Us | Industry Sector | Estimated Deal Size | Person LinkedIn URL\n\n"
+        "CRITICAL RULES:\n"
+        "- Do NOT invent, guess, or output any placeholder @gmail.com email addresses.\n"
+        "- Locate or identify the actual First Name and Last Name of the regional Logistics, Supply Chain, Procurement, or Plant executive.\n"
+        "- Phone: Indian format with +91 when possible.\n"
+        "- Why They Need Us: 1-2 specific logical sentences.\n"
+        "- Estimated Deal Size: e.g. Rs.2-5 Lakh/month.\n"
+        "- NO markdown introduction, NO headers, ONLY table rows starting with company name.\n"
     )
     response, model_name = call_gemini_with_retry(prompt)
     return response.text, model_name
@@ -403,9 +438,9 @@ def agent_gemini_strategist(raw_leads_data, our_product, our_company, my_product
         "CRITICAL: Return ONLY a valid JSON array. No markdown. No backticks. No explanation.\n"
         "Each object MUST have these exact keys:\n"
         "- company (string)\n"
-        "- contact_person (string)\n"
+        "- first_name (string)\n"
+        "- last_name (string)\n"
         "- person_linkedin (string)\n"
-        "- company_linkedin (string)\n"
         "- deal_score (integer 1-100)\n"
         "- priority (string: HOT, WARM, or COLD)\n"
         "- our_value_prop (string)\n"
@@ -439,11 +474,11 @@ def agent_gemini_communicator(strategy_data, leads_data, our_product, our_compan
         "CRITICAL: Return ONLY a valid JSON array. No markdown. No backticks. No explanation.\n"
         "Each object MUST have these exact keys:\n"
         "- company (string)\n"
-        "- contact_person (string)\n"
+        "- first_name (string)\n"
+        "- last_name (string)\n"
         "- phone (string)\n"
         "- email (string)\n"
         "- person_linkedin (string)\n"
-        "- company_linkedin (string)\n"
         "- whatsapp_message (string)\n"
         "- email_subject (string)\n"
         "- email_body (string)\n"
@@ -483,7 +518,6 @@ def send_live_hostinger_email(lead_email, subject, body_text):
     try:
         with smtplib.SMTP_SSL(smtp_server, port) as server:
             server.login(sender_email, sender_password)
-            # Updated to pass both the lead email and your email as a list
             server.sendmail(sender_email, [lead_email, sender_email], message.as_string())
         return "Success"
     except Exception as e:
@@ -504,7 +538,8 @@ def agent_gemini_autoresponder(lead_data, strategy, messages, our_product, our_c
         "COMMUNICATION TONE: " + reply_tone + "\n\n"
         "LEAD CONTEXT:\n"
         "- Company: " + str(lead_data.get("company", "Unknown")) + "\n"
-        "- Contact: " + str(lead_data.get("contact_person", "Unknown")) + "\n"
+        "- First Name: " + str(lead_data.get("first_name", "Unknown")) + "\n"
+        "- Last Name: " + str(lead_data.get("last_name", "Unknown")) + "\n"
         "- LinkedIn: " + str(lead_data.get("person_linkedin", "")) + "\n"
         "- Priority: " + str(strategy.get("priority", "WARM")) + "\n"
         "- Pain Points: " + str(strategy.get("pain_points", [])) + "\n"
@@ -659,7 +694,6 @@ if run_pipeline:
     elif not my_product or not region or not target_client:
         st.warning("Please fill in Product, Region, and Client Type.")
     else:
-        # Reset current operational keys cleanly
         st.session_state.pipeline_results = {}
         st.session_state.conversation_log = []
         st.session_state.leads_data = []
@@ -761,9 +795,9 @@ if "gemini_raw" in st.session_state.pipeline_results:
     leads_list = st.session_state.leads_data
     if leads_list:
         df_display = pd.DataFrame(leads_list)
-        display_cols = ["company", "contact_person", "decision_maker_role", "phone", "email", "person_linkedin", "why_need", "deal_size"]
+        display_cols = ["company", "first_name", "last_name", "decision_maker_role", "phone", "email", "why_need", "deal_size", "person_linkedin"]
         df_display = df_display[[c for c in display_cols if c in df_display.columns]]
-        col_labels = ["Company", "Contact", "Role", "Phone", "Email", "LinkedIn", "Why They Need Us", "Est. Deal"]
+        col_labels = ["Company", "First Name", "Last Name", "Role", "Phone", "Email Status", "Why They Need Us", "Est. Deal", "LinkedIn Query"]
         df_display.columns = col_labels[:len(df_display.columns)]
         st.dataframe(df_display, use_container_width=True, hide_index=True)
 
@@ -783,7 +817,7 @@ if "gemini_raw" in st.session_state.pipeline_results:
             '<div class="lead-card">'
             '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">'
             '<div><p class="lead-name">' + esc(s.get("company", "Unknown")) + "</p>"
-            '<p class="lead-address">Contact: ' + esc(s.get("contact_person", "")) + " | Score: " + esc(s.get("deal_score", 0)) + "/100</p></div>"
+            '<p class="lead-address">Contact: ' + esc(s.get("first_name", "")) + ' ' + esc(s.get("last_name", "")) + " | Score: " + esc(s.get("deal_score", 0)) + "/100</p></div>"
             '<span class="' + badge_class + '">' + esc(priority) + "</span></div>"
             '<div class="strategy-box"><div class="strategy-title">Strategic Value Proposition</div>'
             '<div class="strategy-text">' + esc(s.get("our_value_prop", "")) + "</div></div>"
@@ -815,7 +849,7 @@ if "gemini_raw" in st.session_state.pipeline_results:
     messages_list = st.session_state.pipeline_results.get("messages", [])
     for idx, msg in enumerate(messages_list):
         phone           = str(msg.get("phone", ""))
-        email_to        = str(msg.get("email", ""))
+        email_to        = str(st.session_state.leads_data[idx].get("email", msg.get("email", "")))
         wa_text         = str(msg.get("whatsapp_message", ""))
         email_sub       = str(msg.get("email_subject", ""))
         email_body      = str(msg.get("email_body", ""))
@@ -825,19 +859,23 @@ if "gemini_raw" in st.session_state.pipeline_results:
         best_time       = str(msg.get("best_time_to_contact", "Weekday morning"))
         follow_up       = str(msg.get("follow_up_day", "3 days"))
 
+        f_name = str(st.session_state.leads_data[idx].get("first_name", msg.get("first_name", "")))
+        l_name = str(st.session_state.leads_data[idx].get("last_name", msg.get("last_name", "")))
+
         clean_ph  = clean_phone_number(phone)
         wa_link   = "https://wa.me/" + clean_ph + "?text=" + urllib.parse.quote(wa_text)
         mail_link = "mailto:" + email_to + "?subject=" + urllib.parse.quote(email_sub) + "&body=" + urllib.parse.quote(email_body)
         li_link   = person_linkedin or (
             "https://www.linkedin.com/search/results/people/?keywords="
-            + urllib.parse.quote(str(msg.get("contact_person", "")) + " " + company)
+            + urllib.parse.quote(f_name + " " + l_name + " " + company)
         )
 
         st.markdown(
             '<div class="lead-card" style="border-color:#1a4a1a;">'
             '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
-            '<p class="lead-name">' + esc(company) + "</p>"
+            '<p class="lead-name">' + esc(company) + " (" + esc(f_name) + " " + esc(l_name) + ")</p>"
             '<span style="font-size:0.78rem;color:#7a8ba0;">Best Time: ' + esc(best_time) + " | Follow-up: " + esc(follow_up) + "</span></div>"
+            '<p style="font-size:0.85rem;color:#64b5f6;"><b>Active Target Email:</b> ' + esc(email_to) + '</p>'
             '<div class="msg-box msg-whatsapp"><div class="msg-label msg-label-wa">WhatsApp Message</div>'
             '<div class="msg-content">' + esc(wa_text) + "</div></div>"
             '<div class="msg-box msg-email"><div class="msg-label msg-label-mail">Email - Subject: ' + esc(email_sub) + "</div>"
@@ -852,14 +890,28 @@ if "gemini_raw" in st.session_state.pipeline_results:
             unsafe_allow_html=True,
         )
         
-        # --- COMPONENT DISPATCH STABILITY CONTROLLER LAYER ---
-        button_key = f"send_auto_email_{company.replace(' ', '_')}_{idx}"
-        st.button(
-            f"🚀 Dispatch Automated Email to {company}", 
-            key=button_key, 
-            on_click=handle_email_dispatch, 
-            args=(email_to, email_sub, email_body, company)
-        )
+        # --- B2B DATA ENRICHMENT INTERACTIVE LAYER (BARDEEN ACCELERATOR) ---
+        btn_col1, btn_col2 = st.columns(2)
+        with btn_col1:
+            enrich_key = f"bardeen_enrich_{company.replace(' ', '_')}_{idx}"
+            if st.button(f"🔍 Extract Real Corporate Email for {company}", key=enrich_key):
+                with st.spinner(f"Querying corporate servers for {f_name} {l_name}..."):
+                    extracted_email = get_bardeen_style_email(f_name, l_name, company)
+                    if extracted_email:
+                        st.success(f"✅ Verified Inbox Extracted: {extracted_email}")
+                        st.session_state.leads_data[idx]["email"] = extracted_email
+                        st.rerun()
+                    else:
+                        st.warning("⚠️ Email hidden behind network firewalls. Try the LinkedIn button to connect directly!")
+
+        with btn_col2:
+            button_key = f"send_auto_email_{company.replace(' ', '_')}_{idx}"
+            st.button(
+                f"🚀 Dispatch Automated Email to {company}", 
+                key=button_key, 
+                on_click=handle_email_dispatch, 
+                args=(email_to, email_sub, email_body, company)
+            )
         st.markdown("<br>", unsafe_allow_html=True)
 
     # ---------------------------------------------
@@ -880,18 +932,18 @@ if "gemini_raw" in st.session_state.pipeline_results:
         for reply in auto_replies:
             scenario     = str(reply.get("reply_scenario", ""))
             scenario_col = scenario_colors.get(scenario, "#7a8ba0")
-            escalate     = reply.get("escalate_to_human", False)
+            integrate     = reply.get("escalate_to_human", False)
             escalate_html = (
                 '<span style="background:#1a0a0a;color:#ff4444;border:1px solid #ff4444;'
                 'padding:3px 10px;border-radius:10px;font-size:0.72rem;font-weight:700;">ESCALATE TO HUMAN</span>'
-                if escalate else
+                if integrate else
                 '<span style="background:#0a1a0a;color:#00c851;border:1px solid #00c851;'
                 'padding:3px 10px;border-radius:10px;font-size:0.72rem;font-weight:700;">AUTO-HANDLED</span>'
             )
             esc_reason_html = (
                 '<p style="color:#ff8800;font-size:0.8rem;margin-top:6px;">Escalation Reason: '
                 + esc(reply.get("escalation_reason", "")) + "</p>"
-                if escalate else ""
+                if integrate else ""
             )
             st.markdown(
                 '<div class="lead-card" style="border-color:#1a3a0a;">'
