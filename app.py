@@ -11,8 +11,8 @@ import streamlit as st
 import requests
 
 try:
-     extra_streamlit_components as stx
-except NameError:
+     import extra_streamlit_components as stx
+except Exception:
     class _MemoryCookieManager:
         @staticmethod
         def get(key):
