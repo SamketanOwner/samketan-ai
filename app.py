@@ -333,7 +333,7 @@ def show_phase_header(css_class, icon_html, title, subtitle):
         '<div class="phase-header ' + css_class + '">'
         '<span style="font-size:1.5rem">' + icon_html + "</span>"
         '<div><p class="phase-title">' + esc(title) + "</p>"
-        '<p class="phase-sub">' + esc(subtitle) + "</p></div></div>',
+        '<p class="phase-sub">' + esc(subtitle) + "</p></div></div>",
         unsafe_allow_html=True,
     )
 
