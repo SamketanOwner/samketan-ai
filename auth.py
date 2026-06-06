@@ -60,6 +60,36 @@ def log_to_google_sheet(user_info, method):
     except:
         pass
 
+# --- GOOGLE OAUTH HANDLER ---
+def handle_google_oauth():
+    """
+    Handles Google OAuth callback.
+    Call this ONCE at the very top of login_screen(), before any rendering.
+    Returns True if user is now authenticated via Google.
+    """
+    try:
+        from streamlit_google_auth import Authenticate
+        authenticator = Authenticate(
+            secret_credentials_path=None,
+            cookie_name="samketan_google_session",
+            cookie_key=st.secrets.get("google_oauth", {}).get("cookie_key", "samketan_key_2024"),
+            redirect_uri=st.secrets.get("google_oauth", {}).get("redirect_uri", "https://samketanai.streamlit.app"),
+        )
+        authenticator.check_authentification()
+        if st.session_state.get("connected"):
+            user_email = st.session_state["user_info"].get("email", "")
+            user_name  = st.session_state["user_info"].get("name", "User")
+            log_to_google_sheet(user_email, "Google OAuth")
+            st.session_state.authenticated = True
+            st.session_state.current_user  = user_email
+            st.session_state.display_name  = user_name
+            return True, authenticator
+        return False, authenticator
+    except ImportError:
+        return False, None
+    except Exception:
+        return False, None
+
 # --- CSS INJECTION ---
 def inject_css(logo_b64=None):
     logo_html = ""
@@ -86,249 +116,6 @@ def inject_css(logo_b64=None):
     .stApp {{
         background: #f0f2f7 !important;
         font-family: 'DM Sans', sans-serif;
-    }}
-
-    /* ===================== CARD WRAPPER ===================== */
-    .sn-card-outer {{
-        display: flex;
-        min-height: 100vh;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem 1rem;
-    }}
-
-    .sn-card {{
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        max-width: 860px;
-        width: 100%;
-        border-radius: 20px;
-        overflow: hidden;
-        box-shadow: 0 24px 60px rgba(13,27,62,0.18), 0 4px 16px rgba(0,0,0,0.06);
-    }}
-
-    /* ===================== LEFT PANEL ===================== */
-    .sn-left {{
-        background: #0D1B3E;
-        padding: 2.5rem 2rem;
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
-        position: relative;
-        overflow: hidden;
-    }}
-
-    .sn-left-ring1 {{
-        position: absolute;
-        top: -70px; right: -70px;
-        width: 240px; height: 240px;
-        border-radius: 50%;
-        border: 35px solid rgba(55,138,221,0.1);
-        pointer-events: none;
-    }}
-
-    .sn-left-ring2 {{
-        position: absolute;
-        bottom: -50px; left: -50px;
-        width: 180px; height: 180px;
-        border-radius: 50%;
-        border: 25px solid rgba(55,138,221,0.07);
-        pointer-events: none;
-    }}
-
-    .sn-logo-row {{
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        position: relative;
-        z-index: 2;
-    }}
-
-    .sn-brand {{
-        display: flex;
-        flex-direction: column;
-    }}
-
-    .sn-brand-name {{
-        font-family: 'Playfair Display', Georgia, serif;
-        font-size: 19px;
-        font-weight: 700;
-        color: #fff;
-        line-height: 1.1;
-    }}
-
-    .sn-brand-tagline {{
-        font-size: 10px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: rgba(255,255,255,0.4);
-        margin-top: 3px;
-    }}
-
-    .sn-hero {{
-        position: relative;
-        z-index: 2;
-    }}
-
-    .sn-hero h1 {{
-        font-family: 'Playfair Display', Georgia, serif;
-        font-size: 24px;
-        font-weight: 700;
-        color: #fff;
-        line-height: 1.4;
-        margin: 0 0 0.75rem;
-    }}
-
-    .sn-hero p {{
-        font-size: 13px;
-        color: rgba(255,255,255,0.5);
-        line-height: 1.7;
-        margin: 0;
-    }}
-
-    .sn-badge-row {{
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        position: relative;
-        z-index: 2;
-    }}
-
-    .sn-badge {{
-        background: rgba(255,255,255,0.06);
-        border: 0.5px solid rgba(255,255,255,0.14);
-        border-radius: 5px;
-        padding: 4px 10px;
-        font-size: 10px;
-        letter-spacing: 0.05em;
-        color: rgba(255,255,255,0.6);
-    }}
-
-    .sn-divider {{
-        height: 0.5px;
-        background: rgba(255,255,255,0.1);
-        position: relative;
-        z-index: 2;
-    }}
-
-    .sn-sister {{
-        position: relative;
-        z-index: 2;
-    }}
-
-    .sn-sister-label {{
-        font-size: 10px;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-        color: rgba(255,255,255,0.3);
-        margin-bottom: 8px;
-    }}
-
-    .sn-sister-link {{
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        text-decoration: none;
-        cursor: pointer;
-        padding: 10px 12px;
-        border-radius: 10px;
-        border: 0.5px solid rgba(255,255,255,0.1);
-        background: rgba(255,255,255,0.04);
-        transition: background 0.2s;
-    }}
-
-    .sn-sister-link:hover {{
-        background: rgba(255,255,255,0.08);
-    }}
-
-    .sn-sister-dot {{
-        width: 7px; height: 7px;
-        border-radius: 50%;
-        background: #4CAF82;
-        margin-top: 5px;
-        flex-shrink: 0;
-    }}
-
-    .sn-sister-name {{
-        font-size: 13px;
-        font-weight: 500;
-        color: #7FB3FF;
-        text-decoration: underline;
-        text-underline-offset: 3px;
-        text-decoration-color: rgba(127,179,255,0.35);
-        line-height: 1;
-        margin-bottom: 3px;
-    }}
-
-    .sn-sister-desc {{
-        font-size: 11px;
-        color: rgba(255,255,255,0.33);
-    }}
-
-    /* ===================== RIGHT PANEL ===================== */
-    .sn-right {{
-        background: #fff;
-        padding: 2.5rem 2.2rem;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        gap: 1.3rem;
-    }}
-
-    .sn-access-kicker {{
-        font-size: 10px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: #7b8aab;
-        margin: 0 0 5px;
-    }}
-
-    .sn-access-title {{
-        font-family: 'Playfair Display', Georgia, serif;
-        font-size: 22px;
-        font-weight: 700;
-        color: #0D1B3E;
-        margin: 0;
-    }}
-
-    .sn-step-bar {{
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }}
-
-    .sn-step-pill {{
-        height: 5px;
-        border-radius: 3px;
-        flex: 1;
-        background: #e5e8f0;
-    }}
-
-    .sn-step-pill.done {{
-        background: #0D1B3E;
-    }}
-
-    .sn-step-text {{
-        font-size: 11px;
-        color: #7b8aab;
-        white-space: nowrap;
-    }}
-
-    .sn-info-bar {{
-        background: #f0f5ff;
-        border: 0.5px solid #c8d6f5;
-        border-radius: 8px;
-        padding: 10px 14px;
-        display: flex;
-        gap: 10px;
-        align-items: flex-start;
-    }}
-
-    .sn-info-bar p {{
-        font-size: 12px;
-        color: #4a5a8a;
-        margin: 0;
-        line-height: 1.55;
     }}
 
     /* Streamlit widget overrides */
@@ -375,6 +162,24 @@ def inject_css(logo_b64=None):
         background: #1a3160 !important;
     }}
 
+    /* Google button override — white with border */
+    div[data-testid="stButton"]:has(button[key="google_signin_btn"]) > button,
+    .google-btn-wrapper div[data-testid="stButton"] > button {{
+        background: #ffffff !important;
+        color: #3c4043 !important;
+        border: 1px solid #dadce0 !important;
+        border-radius: 9px !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        letter-spacing: 0.01em !important;
+    }}
+
+    div[data-testid="stButton"]:has(button[key="google_signin_btn"]) > button:hover {{
+        background: #f8fafd !important;
+        border-color: #c0c7d5 !important;
+        box-shadow: 0 1px 6px rgba(32,33,36,0.1) !important;
+    }}
+
     div[data-testid="stSuccess"] {{
         border-radius: 9px !important;
         font-family: 'DM Sans', sans-serif !important;
@@ -389,7 +194,7 @@ def inject_css(logo_b64=None):
     </style>
     """, unsafe_allow_html=True)
 
-    # Render the static left panel + card structure via HTML
+    # Render the static left panel via HTML
     st.markdown(f"""
     <div style="
         background: #0D1B3E;
@@ -457,6 +262,11 @@ def login_screen():
     if st.session_state.authenticated:
         return True
 
+    # --- Handle Google OAuth callback FIRST (before any rendering) ---
+    google_authed, google_authenticator = handle_google_oauth()
+    if google_authed:
+        st.rerun()
+
     # Page config
     st.set_page_config(
         page_title="Samketan AI — Secure Access",
@@ -467,7 +277,7 @@ def login_screen():
 
     logo_b64 = get_logo_base64()
 
-    # Two-column layout: left = branding panel (HTML), right = form (Streamlit)
+    # Two-column layout
     col_left, col_right = st.columns([1, 1], gap="small")
 
     with col_left:
@@ -485,6 +295,76 @@ def login_screen():
         if not st.session_state.get("otp_sent"):
             st.markdown('<h2 style="font-family:\'Playfair Display\',Georgia,serif;font-size:22px;font-weight:700;color:#0D1B3E;margin:0 0 1.2rem;">Sign in to your account</h2>', unsafe_allow_html=True)
 
+            # ===================== GOOGLE SIGN-IN BUTTON =====================
+            st.markdown("""
+            <div style="margin-bottom:0.4rem;">
+              <p style="font-family:'DM Sans',sans-serif;font-size:12px;color:#7b8aab;margin:0 0 10px;">Quick access</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Google SVG icon inline in button label
+            google_icon = """<svg width="18" height="18" viewBox="0 0 18 18" style="vertical-align:-4px;margin-right:8px;" xmlns="http://www.w3.org/2000/svg"><g><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></g></svg>"""
+
+            if google_authenticator is not None:
+                # Library is installed — render proper OAuth button
+                st.markdown(f"""
+                <div style="
+                    display:flex;align-items:center;justify-content:center;
+                    gap:10px;
+                    background:#fff;
+                    border:1px solid #dadce0;
+                    border-radius:9px;
+                    padding:11px 16px;
+                    cursor:pointer;
+                    font-family:'DM Sans',sans-serif;
+                    font-size:14px;
+                    font-weight:500;
+                    color:#3c4043;
+                    margin-bottom:0.5rem;
+                    transition:box-shadow 0.2s;
+                ">
+                  {google_icon}
+                  Continue with Google
+                </div>
+                """, unsafe_allow_html=True)
+                # The actual clickable Streamlit trigger
+                google_authenticator.login()
+            else:
+                # Library not installed — show styled placeholder that informs user
+                st.markdown(f"""
+                <div style="
+                    display:flex;align-items:center;justify-content:center;
+                    gap:10px;
+                    background:#fff;
+                    border:1px solid #dadce0;
+                    border-radius:9px;
+                    padding:11px 16px;
+                    font-family:'DM Sans',sans-serif;
+                    font-size:14px;
+                    font-weight:500;
+                    color:#9aa0ae;
+                    margin-bottom:0.5rem;
+                    position:relative;
+                ">
+                  {google_icon}
+                  Continue with Google
+                  <span style="position:absolute;right:12px;font-size:10px;color:#bbb;letter-spacing:0.05em;">SETUP NEEDED</span>
+                </div>
+                <p style="font-family:'DM Sans',sans-serif;font-size:11px;color:#bbb;text-align:center;margin:0 0 4px;">
+                  Add <code>streamlit-google-auth</code> to requirements.txt and configure secrets to enable.
+                </p>
+                """, unsafe_allow_html=True)
+
+            # ===================== DIVIDER =====================
+            st.markdown("""
+            <div style="display:flex;align-items:center;gap:12px;margin:1.1rem 0;">
+              <div style="flex:1;height:0.5px;background:#e0e4ef;"></div>
+              <span style="font-family:'DM Sans',sans-serif;font-size:12px;color:#aab0c2;white-space:nowrap;">or sign in with email</span>
+              <div style="flex:1;height:0.5px;background:#e0e4ef;"></div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # ===================== EXISTING EMAIL FLOW (unchanged) =====================
             # Step bar
             st.markdown("""
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
@@ -516,9 +396,9 @@ def login_screen():
                     st.error("Please enter a valid business email address.")
 
         else:
+            # ===================== OTP STEP 2 (completely unchanged) =====================
             st.markdown('<h2 style="font-family:\'Playfair Display\',Georgia,serif;font-size:22px;font-weight:700;color:#0D1B3E;margin:0 0 1.2rem;">Check your inbox</h2>', unsafe_allow_html=True)
 
-            # Step bar
             st.markdown("""
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
               <div style="height:5px;border-radius:3px;flex:1;background:#0D1B3E;"></div>
