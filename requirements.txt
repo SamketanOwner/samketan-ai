@@ -10,3 +10,4 @@ langchain-text-splitters
 faiss-cpu
 pypdf
 langchain
+streamlit-google-auth
