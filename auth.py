@@ -60,6 +60,15 @@ def log_to_google_sheet(user_info, method):
     except:
         pass
 
+import streamlit as st
+import requests
+from urllib.parse import urlencode  # ✅ FIXED: Crucial import to prevent URL creation crash
+
+# --- CONFIGURATION (Safe Global Variable Mapping) ---
+# Grabs your live redirect link directly from your secrets panel
+REDIRECT_URI = st.secrets["google_oauth"]["redirect_uri"]
+
+
 # --- GOOGLE OAUTH FUNCTIONS ---
 def get_google_auth_url():
     """Build Google OAuth URL — opens Google login popup"""
@@ -77,6 +86,7 @@ def get_google_auth_url():
     }
     return "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
 
+
 def exchange_code_for_user(code):
     """Exchange auth code for user email — pure requests, no library"""
     try:
@@ -86,14 +96,18 @@ def exchange_code_for_user(code):
         return None, f"Secrets error: {e}"
 
     # Exchange code for token
-    token_resp = requests.post("https://oauth2.googleapis.com/token", data={
-        "code": code,
-        "client_id": client_id,
-        "client_secret": client_secret,
-        "redirect_uri": REDIRECT_URI,
-        "grant_type": "authorization_code",
-    })
-    token_data = token_resp.json()
+    try:
+        token_resp = requests.post("https://oauth2.googleapis.com/token", data={
+            "code": code,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uri": REDIRECT_URI,
+            "grant_type": "authorization_code",
+        }, timeout=10) # Added timeout safety net
+        
+        token_data = token_resp.json()
+    except Exception as network_err:
+        return None, f"Network handshake failed: {network_err}"
 
     if "error" in token_data:
         return None, f"Token error: {token_data.get('error_description', token_data['error'])}"
@@ -103,9 +117,12 @@ def exchange_code_for_user(code):
         return None, "No access token received"
 
     # Get user info
-    user_resp = requests.get("https://www.googleapis.com/oauth2/v2/userinfo",
-                             headers={"Authorization": f"Bearer {access_token}"})
-    user_data = user_resp.json()
+    try:
+        user_resp = requests.get("https://www.googleapis.com/oauth2/v2/userinfo",
+                                 headers={"Authorization": f"Bearer {access_token}"}, timeout=10)
+        user_data = user_resp.json()
+    except Exception as info_err:
+        return None, f"User info fetch failed: {info_err}"
 
     email = user_data.get("email")
     name  = user_data.get("name", email)
@@ -115,6 +132,7 @@ def exchange_code_for_user(code):
 
     return {"email": email, "name": name}, None
 
+
 def handle_google_callback():
     """Check if Google redirected back with ?code=... in URL"""
     params = st.query_params
@@ -122,19 +140,23 @@ def handle_google_callback():
     if not code:
         return False
 
-    # Clear code from URL immediately
+    # ✅ FIXED: We must extract user info FIRST before wiping query params out of the browser URL!
+    user_info, error = exchange_code_for_user(code)
+    
+    # Clean up the URL state immediately *after* the request is processed
     st.query_params.clear()
 
-    user_info, error = exchange_code_for_user(code)
     if error:
         st.session_state["google_error"] = error
         return False
 
+    # Log access and establish session state variables
     log_to_google_sheet(user_info["email"], "Google OAuth")
     st.session_state.authenticated  = True
     st.session_state.current_user   = user_info["email"]
     st.session_state.display_name   = user_info["name"]
     return True
+
 
 # --- CSS + LEFT PANEL ---
 def inject_css(logo_b64=None):
