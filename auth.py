@@ -115,26 +115,25 @@ def exchange_code_for_user(code):
 
     return {"email": email, "name": name}, None
 
-
-# *** DEBUG VERSION — shows error on screen instead of crashing ***
 def handle_google_callback():
+    """Check if Google redirected back with ?code=... in URL"""
     params = st.query_params
     code = params.get("code")
     if not code:
         return False
 
-    # Show debug info on screen
+    # Clear code from URL immediately
+    st.query_params.clear()
+
     user_info, error = exchange_code_for_user(code)
     if error:
-        st.query_params.clear()
-        st.error(f"🔴 Google Auth Error: {error}")
-        st.stop()
+        st.session_state["google_error"] = error
+        return False
 
-    st.query_params.clear()
     log_to_google_sheet(user_info["email"], "Google OAuth")
-    st.session_state.authenticated = True
-    st.session_state.current_user  = user_info["email"]
-    st.session_state.display_name  = user_info["name"]
+    st.session_state.authenticated  = True
+    st.session_state.current_user   = user_info["email"]
+    st.session_state.display_name   = user_info["name"]
     return True
 
 # --- CSS + LEFT PANEL ---
