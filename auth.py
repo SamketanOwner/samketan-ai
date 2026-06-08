@@ -70,14 +70,18 @@ def log_to_google_sheet(user_info, method):
 
 # --- GOOGLE OAUTH FUNCTIONS ---
 def get_google_auth_url():
-    """Build Google OAuth URL — opens Google login popup"""
+    """Build Google OAuth URL — opens Google login popup with forced strict URI cleaning"""
     try:
         client_id = st.secrets["google_oauth"]["client_id"]
     except Exception:
         return None
+    
+    # Force clean any background trailing slashes from the secrets parameter
+    clean_redirect_uri = REDIRECT_URI.rstrip('/')
+    
     params = {
         "client_id": client_id,
-        "redirect_uri": REDIRECT_URI,
+        "redirect_uri": clean_redirect_uri,
         "response_type": "code",
         "scope": "openid email profile",
         "access_type": "offline",
@@ -87,12 +91,15 @@ def get_google_auth_url():
 
 
 def exchange_code_for_user(code):
-    """Exchange auth code for user email — pure requests, no library"""
+    """Exchange auth code for user email using strict requests parameters"""
     try:
         client_id     = st.secrets["google_oauth"]["client_id"]
         client_secret = st.secrets["google_oauth"]["client_secret"]
     except Exception as e:
         return None, f"Secrets error: {e}"
+
+    # Force clean any background trailing slashes from the secrets parameter
+    clean_redirect_uri = REDIRECT_URI.rstrip('/')
 
     # Exchange code for token
     try:
@@ -100,7 +107,7 @@ def exchange_code_for_user(code):
             "code": code,
             "client_id": client_id,
             "client_secret": client_secret,
-            "redirect_uri": REDIRECT_URI,
+            "redirect_uri": clean_redirect_uri,
             "grant_type": "authorization_code",
         }, timeout=10)
         
@@ -133,16 +140,17 @@ def exchange_code_for_user(code):
 
 
 def handle_google_callback():
-    """Check if Google redirected back with ?code=... in URL"""
+    """Check if Google redirected back with ?code=... in URL while handling explicit parameter state"""
+    # Use Streamlit's native path parsing to catch code regardless of double slash updates
     params = st.query_params
     code = params.get("code")
     if not code:
         return False
 
-    # Extract user info FIRST before wiping query params out of the browser URL
+    # Exchange code for token FIRST before removing parameters
     user_info, error = exchange_code_for_user(code)
     
-    # Clean up the URL state immediately after the request is processed
+    # Clear parameter trailing states cleanly
     st.query_params.clear()
 
     if error:
