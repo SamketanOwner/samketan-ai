@@ -69,12 +69,24 @@ def handle_google_oauth():
     """
     try:
         from streamlit_google_auth import Authenticate
+        
+        # Check which secrets block is present and use it
+        if "google_oauth" in st.secrets:
+            oauth_config = st.secrets["google_oauth"]
+        elif "auth" in st.secrets:
+            oauth_config = st.secrets["auth"]
+        else:
+            return False, None
+
         authenticator = Authenticate(
-            secret_credentials_path=None,
+            secret_credentials_path=None, 
             cookie_name="samketan_google_session",
-            cookie_key=st.secrets.get("google_oauth", {}).get("cookie_key", "samketan_key_2024"),
-            redirect_uri=st.secrets.get("google_oauth", {}).get("redirect_uri", "https://samketanai.streamlit.app"),
+            cookie_key=oauth_config.get("cookie_key", oauth_config.get("cookie_secret", "samketan_key_2024")),
+            redirect_uri=oauth_config.get("redirect_uri", "https://samketanai.streamlit.app"),
+            client_id=oauth_config.get("client_id"),
+            client_secret=oauth_config.get("client_secret")
         )
+        
         authenticator.check_authentification()
         if st.session_state.get("connected"):
             user_email = st.session_state["user_info"].get("email", "")
