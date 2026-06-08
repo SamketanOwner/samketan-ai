@@ -1,4 +1,15 @@
 import streamlit as st
+
+# ==============================================================================
+# CRITICAL: THIS MUST REMAIN THE ABSOLUTE FIRST STREAMLIT COMMAND IN THE ENTIRE FILE
+# ==============================================================================
+st.set_page_config(
+    page_title="Samketan AI — Secure Access",
+    page_icon="🔐",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
 import requests
 import smtplib
 import random
@@ -21,10 +32,11 @@ def get_logo_base64():
             return base64.b64encode(f.read()).decode()
     return None
 
-# --- EMAIL OTP ---
+# --- EMAIL ---
 def send_otp_email(receiver_email, otp_code):
     try:
-        msg = MIMEText(f"""
+        msg = MIMEText(
+            f"""
 Dear User,
 
 Your Samketan AI verification code is:
@@ -34,7 +46,8 @@ Your Samketan AI verification code is:
 This code is valid for 10 minutes. Do not share it with anyone.
 
 — Samketan AI | B2B Lead Generation Platform
-        """.strip())
+            """.strip()
+        )
         msg['Subject'] = '🔐 Samketan AI — Your Access Code'
         msg['From'] = f"Samketan AI <{GMAIL_USER}>"
         msg['To'] = receiver_email
@@ -58,24 +71,59 @@ def log_to_google_sheet(user_info, method):
     except:
         pass
 
-# --- CHECK STREAMLIT BUILT-IN OAUTH ---
-def check_builtin_google_auth():
+# --- CACHED AUTHENTICATOR CREATION ---
+@st.cache_resource
+def get_google_authenticator():
     """
-    Uses Streamlit's built-in OAuth (v1.35+).
-    Requires [auth] section in secrets.toml.
-    No extra library needed.
+    Creates and caches the Authenticate object to completely eliminate duplicate element conflicts.
+    """
+    if "google_oauth" in st.secrets:
+        config = st.secrets["google_oauth"]
+    elif "auth" in st.secrets:
+        config = st.secrets["auth"]
+    else:
+        return None
+        
+    try:
+        from streamlit_google_auth import Authenticate
+        return Authenticate(
+            secret_credentials_path=None,
+            cookie_name="samketan_google_session",
+            cookie_key=config.get("cookie_key", config.get("cookie_secret", "samketan_key_2026")),
+            redirect_uri=config.get("redirect_uri", "https://samketanai.streamlit.app"),
+            client_id=config.get("client_id"),
+            client_secret=config.get("client_secret")
+        )
+    except Exception:
+        return None
+
+# --- GOOGLE OAUTH HANDLER ---
+def handle_google_oauth():
+    """
+    Handles Google OAuth callback context safely using the cached resource instance.
     """
     try:
-        if not hasattr(st, "login"):
-            return False
-        user = st.experimental_user
-        if user and user.get("email"):
-            return True
-        return False
-    except Exception:
-        return False
+        if "google_oauth" not in st.secrets and "auth" not in st.secrets:
+            return False, None
 
-# --- CSS + LEFT PANEL ---
+        authenticator = get_google_authenticator()
+        if authenticator is None:
+            return False, None
+            
+        authenticator.check_authentification()
+        if st.session_state.get("connected"):
+            user_email = st.session_state["user_info"].get("email", "")
+            user_name  = st.session_state["user_info"].get("name", "User")
+            log_to_google_sheet(user_email, "Google OAuth")
+            st.session_state.authenticated = True
+            st.session_state.current_user  = user_email
+            st.session_state.display_name  = user_name
+            return True, authenticator
+        return False, authenticator
+    except Exception:
+        return False, None
+
+# --- CSS INJECTION ---
 def inject_css(logo_b64=None):
     logo_html = ""
     if logo_b64:
@@ -85,45 +133,116 @@ def inject_css(logo_b64=None):
 
     st.markdown(f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght=600;700&family=DM+Sans:wght=300;400;500&display=swap');
+
+    /* Hide default Streamlit chrome on login page */
     #MainMenu, footer, header {{ visibility: hidden; }}
     .block-container {{ padding: 0 !important; max-width: 100% !important; }}
     section[data-testid="stSidebar"] {{ display: none; }}
-    [data-testid="manage-app-button"], .stDeployButton, div[class*="StatusWidget"] {{ display: none !important; }}
-    .stApp {{ background: #f0f2f7 !important; font-family: 'DM Sans', sans-serif; }}
+
+    /* Hide Manage App button */
+    [data-testid="manage-app-button"],
+    .stDeployButton,
+    div[class*="StatusWidget"] {{ display: none !important; }}
+
+    /* Root page background */
+    .stApp {{
+        background: #f0f2f7 !important;
+        font-family: 'DM Sans', sans-serif;
+    }}
+
+    /* Streamlit widget overrides */
     div[data-testid="stTextInput"] > div > div > input {{
         font-family: 'DM Sans', sans-serif !important;
-        border-radius: 9px !important; border: 1px solid #d0d7e8 !important;
-        padding: 10px 14px !important; font-size: 14px !important;
-        background: #f8f9fc !important; color: #0D1B3E !important;
+        border-radius: 9px !important;
+        border: 1px solid #d0d7e8 !important;
+        padding: 10px 14px !important;
+        font-size: 14px !important;
+        background: #f8f9fc !important;
+        color: #0D1B3E !important;
     }}
+
     div[data-testid="stTextInput"] > div > div > input:focus {{
-        border-color: #378ADD !important; background: #fff !important;
+        border-color: #378ADD !important;
+        background: #fff !important;
         box-shadow: 0 0 0 3px rgba(55,138,221,0.12) !important;
     }}
+
     div[data-testid="stTextInput"] label {{
-        font-family: 'DM Sans', sans-serif !important; font-size: 12px !important;
-        font-weight: 500 !important; color: #4a5a8a !important;
-        letter-spacing: 0.04em !important; text-transform: uppercase !important;
+        font-family: 'DM Sans', sans-serif !important;
+        font-size: 12px !important;
+        font-weight: 500 !important;
+        color: #4a5a8a !important;
+        letter-spacing: 0.04em !important;
+        text-transform: uppercase !important;
     }}
+
     div[data-testid="stButton"] > button {{
-        font-family: 'DM Sans', sans-serif !important; background: #0D1B3E !important;
-        color: #fff !important; border: none !important; border-radius: 9px !important;
-        padding: 0.6rem 1.5rem !important; font-size: 14px !important;
-        font-weight: 500 !important; letter-spacing: 0.04em !important;
-        width: 100% !important; transition: background 0.2s !important;
+        font-family: 'DM Sans', sans-serif !important;
+        background: #0D1B3E !important;
+        color: #fff !important;
+        border: none !important;
+        border-radius: 9px !important;
+        padding: 0.6rem 1.5rem !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        letter-spacing: 0.04em !important;
+        width: 100% !important;
+        transition: background 0.2s !important;
     }}
-    div[data-testid="stButton"] > button:hover {{ background: #1a3160 !important; }}
-    div[data-testid="stSuccess"] {{ border-radius: 9px !important; font-family: 'DM Sans', sans-serif !important; font-size: 13px !important; }}
-    div[data-testid="stError"] {{ border-radius: 9px !important; font-family: 'DM Sans', sans-serif !important; font-size: 13px !important; }}
+
+    div[data-testid="stButton"] > button:hover {{
+        background: #1a3160 !important;
+    }}
+
+    /* Google button override — white with border */
+    div[data-testid="stButton"]:has(button[key="google_signin_btn"]) > button,
+    .google-btn-wrapper div[data-testid="stButton"] > button {{
+        background: #ffffff !important;
+        color: #3c4043 !important;
+        border: 1px solid #dadce0 !important;
+        border-radius: 9px !important;
+        font-size: 14px !important;
+        font-weight: 500 !important;
+        letter-spacing: 0.01em !important;
+    }}
+
+    div[data-testid="stButton"]:has(button[key="google_signin_btn"]) > button:hover {{
+        background: #f8fafd !important;
+        border-color: #c0c7d5 !important;
+        box-shadow: 0 1px 6px rgba(32,33,36,0.1) !important;
+    }}
+
+    div[data-testid="stSuccess"] {{
+        border-radius: 9px !important;
+        font-family: 'DM Sans', sans-serif !important;
+        font-size: 13px !important;
+    }}
+
+    div[data-testid="stError"] {{
+        border-radius: 9px !important;
+        font-family: 'DM Sans', sans-serif !important;
+        font-size: 13px !important;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
+    # Render the static left panel via HTML
     st.markdown(f"""
-    <div style="background:#0D1B3E;border-radius:20px 0 0 20px;padding:2.5rem 2rem;
-        display:flex;flex-direction:column;gap:1.8rem;position:relative;overflow:hidden;min-height:520px;">
+    <div style="
+        background: #0D1B3E;
+        border-radius: 20px 0 0 20px;
+        padding: 2.5rem 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.8rem;
+        position: relative;
+        overflow: hidden;
+        min-height: 520px;
+    ">
       <div style="position:absolute;top:-70px;right:-70px;width:240px;height:240px;border-radius:50%;border:35px solid rgba(55,138,221,0.1);pointer-events:none;"></div>
       <div style="position:absolute;bottom:-50px;left:-50px;width:180px;height:180px;border-radius:50%;border:25px solid rgba(55,138,221,0.07);pointer-events:none;"></div>
+
       <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:2;">
         {logo_html}
         <div>
@@ -131,20 +250,31 @@ def inject_css(logo_b64=None):
           <div style="font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-top:3px;">B2B Lead Generation</div>
         </div>
       </div>
+
       <div style="position:relative;z-index:2;">
         <h2 style="font-family:'Playfair Display',Georgia,serif;font-size:24px;font-weight:700;color:#fff;line-height:1.4;margin:0 0 0.75rem;">Intelligent Leads<br>for Growing<br>Businesses</h2>
         <p style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.7;margin:0;">AI-powered prospecting engine built for India's agri, industrial, and enterprise sectors.</p>
       </div>
+
       <div style="display:flex;flex-wrap:wrap;gap:6px;position:relative;z-index:2;">
         <span style="background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.14);border-radius:5px;padding:4px 10px;font-size:10px;letter-spacing:0.05em;color:rgba(255,255,255,0.6);">Gemini AI</span>
         <span style="background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.14);border-radius:5px;padding:4px 10px;font-size:10px;letter-spacing:0.05em;color:rgba(255,255,255,0.6);">Claude AI</span>
         <span style="background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.14);border-radius:5px;padding:4px 10px;font-size:10px;letter-spacing:0.05em;color:rgba(255,255,255,0.6);">ChatGPT</span>
         <span style="background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.14);border-radius:5px;padding:4px 10px;font-size:10px;letter-spacing:0.05em;color:rgba(255,255,255,0.6);">B2B Intel</span>
       </div>
+
       <div style="height:0.5px;background:rgba(255,255,255,0.1);position:relative;z-index:2;"></div>
+
       <div style="position:relative;z-index:2;">
         <div style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:8px;">Sister Enterprise</div>
-        <a href="https://bhoodeviwarehouse.com/" target="_blank" style="display:flex;align-items:flex-start;gap:10px;text-decoration:none;padding:10px 12px;border-radius:10px;border:0.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);">
+        <a href="https://bhoodeviwarehouse.com/" target="_blank" style="
+          display:flex;align-items:flex-start;gap:10px;
+          text-decoration:none;
+          padding:10px 12px;
+          border-radius:10px;
+          border:0.5px solid rgba(255,255,255,0.1);
+          background:rgba(255,255,255,0.04);
+        ">
           <div style="width:7px;height:7px;border-radius:50%;background:#4CAF82;margin-top:5px;flex-shrink:0;"></div>
           <div>
             <div style="font-size:13px;font-weight:500;color:#7FB3FF;text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(127,179,255,0.35);margin-bottom:3px;">Bhoodevi Warehouse</div>
@@ -159,103 +289,99 @@ def inject_css(logo_b64=None):
 
 # --- MAIN LOGIN FUNCTION ---
 def login_screen():
-    st.set_page_config(
-        page_title="Samketan AI — Secure Access",
-        page_icon="🔐",
-        layout="wide",
-        initial_sidebar_state="collapsed"
-    )
-
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
-
-    # ── Check Streamlit built-in OAuth (no extra library) ──
-    try:
-        user = st.experimental_user
-        if user and hasattr(user, "email") and user.email:
-            if not st.session_state.authenticated:
-                log_to_google_sheet(user.email, "Google OAuth (built-in)")
-                st.session_state.authenticated = True
-                st.session_state.current_user = user.email
-                st.session_state.display_name = getattr(user, "name", user.email)
-    except Exception:
-        pass
 
     if st.session_state.authenticated:
         return True
 
+    # --- Handle Google OAuth callback FIRST (before any rendering) ---
+    google_authed, google_authenticator = handle_google_oauth()
+    if google_authed:
+        st.rerun()
+
     logo_b64 = get_logo_base64()
+
+    # Two-column layout
     col_left, col_right = st.columns([1, 1], gap="small")
 
     with col_left:
         inject_css(logo_b64)
 
     with col_right:
-        google_icon = '<svg width="18" height="18" viewBox="0 0 18 18" style="vertical-align:-4px;margin-right:8px;" xmlns="http://www.w3.org/2000/svg"><g><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></g></svg>'
-
         st.markdown("""
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500&display=swap');
         </style>
-        <div style="padding:2.5rem 0.5rem;">
+        <div style="padding: 2.5rem 0.5rem;">
           <p style="font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#7b8aab;margin:0 0 5px;">Secure Access Portal</p>
         """, unsafe_allow_html=True)
 
         if not st.session_state.get("otp_sent"):
             st.markdown('<h2 style="font-family:\'Playfair Display\',Georgia,serif;font-size:22px;font-weight:700;color:#0D1B3E;margin:0 0 1.2rem;">Sign in to your account</h2>', unsafe_allow_html=True)
 
-            # ── GOOGLE BUTTON ──
-            st.markdown('<p style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#7b8aab;margin:0 0 8px;">Quick access</p>', unsafe_allow_html=True)
+            # ===================== GOOGLE SIGN-IN BUTTON =====================
+            st.markdown("""
+            <div style="margin-bottom:0.4rem;">
+              <p style="font-family:'DM Sans',sans-serif;font-size:12px;color:#7b8aab;margin:0 0 10px;">Quick access</p>
+            </div>
+            """, unsafe_allow_html=True)
 
-            # Try Streamlit built-in st.login first
-            google_available = False
-            try:
-                if hasattr(st, "login") and "auth" in st.secrets:
-                    google_available = True
-            except Exception:
-                pass
+            # Google SVG icon inline in button label
+            google_icon = """<svg width="18" height="18" viewBox="0 0 18 18" style="vertical-align:-4px;margin-right:8px;" xmlns="http://www.w3.org/2000/svg"><g><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></g></svg>"""
 
-            if google_available:
-                # Streamlit native OAuth button (v1.40+)
-                st.login("google")
-            else:
-                # Styled non-functional placeholder — shows setup needed
+            if google_authenticator is not None:
+                # Library is active and ready — run the button setup
                 st.markdown(f"""
-                <div style="display:flex;align-items:center;justify-content:center;gap:8px;
-                    background:#fff;border:1px solid #dadce0;border-radius:9px;
-                    padding:11px 16px;font-family:'DM Sans',sans-serif;
-                    font-size:14px;font-weight:500;color:#3c4043;margin-bottom:4px;">
-                  {google_icon} Continue with Google
+                <div style="
+                    display:flex;align-items:center;justify-content:center;
+                    gap:10px;
+                    background:#fff;
+                    border:1px solid #dadce0;
+                    border-radius:9px;
+                    padding:11px 16px;
+                    cursor:pointer;
+                    font-family:'DM Sans',sans-serif;
+                    font-size:14px;
+                    font-weight:500;
+                    color:#3c4043;
+                    margin-bottom:0.5rem;
+                    transition:box-shadow 0.2s;
+                ">
+                  {google_icon}
+                  Continue with Google
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Try streamlit-google-auth as fallback
-                try:
-                    from streamlit_google_auth import Authenticate
-                    if "google_oauth" in st.secrets:
-                        cfg = st.secrets["google_oauth"]
-                        auth = Authenticate(
-                            secret_credentials_path=None,
-                            cookie_name="samketan_google_session",
-                            cookie_key=cfg.get("cookie_key", "samketan_key_2026"),
-                            redirect_uri=cfg.get("redirect_uri", "https://samketanai.streamlit.app"),
-                            client_id=cfg.get("client_id"),
-                            client_secret=cfg.get("client_secret"),
-                        )
-                        auth.check_authentification()
-                        if st.session_state.get("connected"):
-                            email = st.session_state["user_info"].get("email", "")
-                            name  = st.session_state["user_info"].get("name", "User")
-                            log_to_google_sheet(email, "Google OAuth")
-                            st.session_state.authenticated = True
-                            st.session_state.current_user  = email
-                            st.session_state.display_name  = name
-                            st.rerun()
-                        auth.login()
-                except Exception as e:
-                    st.markdown(f'<p style="font-family:\'DM Sans\',sans-serif;font-size:11px;color:#e06060;text-align:center;margin:2px 0 6px;">Google Sign-In error: {e}</p>', unsafe_allow_html=True)
+                # Render underlying library login click trigger logic
+                google_authenticator.login()
+            else:
+                # Fallback styled layout info block if secrets section is absent
+                st.markdown(f"""
+                <div style="
+                    display:flex;align-items:center;justify-content:center;
+                    gap:10px;
+                    background:#fff;
+                    border:1px solid #dadce0;
+                    border-radius:9px;
+                    padding:11px 16px;
+                    font-family:'DM Sans',sans-serif;
+                    font-size:14px;
+                    font-weight:500;
+                    color:#9aa0ae;
+                    margin-bottom:0.5rem;
+                    position:relative;
+                ">
+                  {google_icon}
+                  Continue with Google
+                  <span style="position:absolute;right:12px;font-size:10px;color:#bbb;letter-spacing:0.05em;">SETUP NEEDED</span>
+                </div>
+                <p style="font-family:'DM Sans',sans-serif;font-size:11px;color:#bbb;text-align:center;margin:0 0 4px;">
+                  Add <code>streamlit-google-auth</code> to requirements.txt and configure secrets to enable.
+                </p>
+                """, unsafe_allow_html=True)
 
-            # ── DIVIDER ──
+            # ===================== DIVIDER =====================
             st.markdown("""
             <div style="display:flex;align-items:center;gap:12px;margin:1.1rem 0;">
               <div style="flex:1;height:0.5px;background:#e0e4ef;"></div>
@@ -264,7 +390,7 @@ def login_screen():
             </div>
             """, unsafe_allow_html=True)
 
-            # ── STEP BAR ──
+            # ===================== EXISTING EMAIL FLOW =====================
             st.markdown("""
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
               <div style="height:5px;border-radius:3px;flex:1;background:#0D1B3E;"></div>
@@ -295,8 +421,9 @@ def login_screen():
                     st.error("Please enter a valid business email address.")
 
         else:
-            # ── OTP STEP 2 (unchanged) ──
+            # ===================== OTP STEP 2 =====================
             st.markdown('<h2 style="font-family:\'Playfair Display\',Georgia,serif;font-size:22px;font-weight:700;color:#0D1B3E;margin:0 0 1.2rem;">Check your inbox</h2>', unsafe_allow_html=True)
+
             st.markdown("""
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
               <div style="height:5px;border-radius:3px;flex:1;background:#0D1B3E;"></div>
@@ -306,7 +433,11 @@ def login_screen():
             """, unsafe_allow_html=True)
 
             email_display = st.session_state.get("current_user", "your email")
-            st.markdown(f'<p style="font-family:\'DM Sans\',sans-serif;font-size:13px;color:#7b8aab;margin-bottom:0.5rem;">Code sent to <strong style="color:#0D1B3E;">{email_display}</strong></p>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <p style="font-family:'DM Sans',sans-serif;font-size:13px;color:#7b8aab;margin-bottom:0.5rem;">
+              Code sent to <strong style="color:#0D1B3E;">{email_display}</strong>
+            </p>
+            """, unsafe_allow_html=True)
 
             otp_input = st.text_input("6-Digit Verification Code", type="password", placeholder="••••••", key="otp_input", max_chars=6)
 
@@ -319,7 +450,11 @@ def login_screen():
                 else:
                     st.error("Incorrect code. Please check your inbox and try again.")
 
-            st.markdown('<p style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#7b8aab;text-align:center;margin-top:0.5rem;">Didn\'t receive it? Check your spam folder, or go back and re-enter your email.</p>', unsafe_allow_html=True)
+            st.markdown("""
+            <p style="font-family:'DM Sans',sans-serif;font-size:12px;color:#7b8aab;text-align:center;margin-top:0.5rem;">
+              Didn't receive it? Check your spam folder, or go back and re-enter your email.
+            </p>
+            """, unsafe_allow_html=True)
 
         st.markdown("</div>", unsafe_allow_html=True)
 
@@ -330,4 +465,6 @@ def login_screen():
 if __name__ == "__main__":
     if not login_screen():
         st.stop()
-    st.success("🎉 You are logged in!")
+
+    # ===== Your main app content below =====
+    st.success("🎉 You are logged in! Replace this with your main Samketan AI app content.")
