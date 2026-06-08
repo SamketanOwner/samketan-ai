@@ -61,6 +61,7 @@ def log_to_google_sheet(user_info, method):
         pass
 
 # --- GOOGLE OAUTH HANDLER ---
+# --- GOOGLE OAUTH HANDLER ---
 def handle_google_oauth():
     """
     Handles Google OAuth callback.
@@ -70,21 +71,17 @@ def handle_google_oauth():
     try:
         from streamlit_google_auth import Authenticate
         
-        # Check which secrets block is present and use it
-        if "google_oauth" in st.secrets:
-            oauth_config = st.secrets["google_oauth"]
-        elif "auth" in st.secrets:
-            oauth_config = st.secrets["auth"]
-        else:
+        # Verify secrets are visible to the app container
+        if "google_oauth" not in st.secrets:
+            st.error("The [google_oauth] section is missing or unreadable in Streamlit Secrets dashboard.")
             return False, None
 
+        # Let the library natively bind to st.secrets["google_oauth"]
         authenticator = Authenticate(
-            secret_credentials_path=None, 
+            secret_credentials_path=None,
             cookie_name="samketan_google_session",
-            cookie_key=oauth_config.get("cookie_key", oauth_config.get("cookie_secret", "samketan_key_2024")),
-            redirect_uri=oauth_config.get("redirect_uri", "https://samketanai.streamlit.app"),
-            client_id=oauth_config.get("client_id"),
-            client_secret=oauth_config.get("client_secret")
+            cookie_key=st.secrets["google_oauth"]["cookie_key"],
+            redirect_uri=st.secrets["google_oauth"]["redirect_uri"]
         )
         
         authenticator.check_authentification()
@@ -98,11 +95,10 @@ def handle_google_oauth():
             return True, authenticator
         return False, authenticator
     except ImportError:
-        st.error("Google Auth library failed to import. Check requirements.txt.")
+        st.error("Library import failed. Ensure streamlit-google-auth is in requirements.txt")
         return False, None
     except Exception as e:
-        # This will print the EXACT technical reason your secrets aren't working!
-        st.error(f"Google OAuth System Error: {e}")
+        st.error(f"Initialization Error: {e}")
         return False, None
 
 # --- CSS INJECTION ---
