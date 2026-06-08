@@ -1,4 +1,15 @@
 import streamlit as st
+
+# ==============================================================================
+# CRITICAL: THIS MUST REMAIN THE ABSOLUTE FIRST STREAMLIT COMMAND IN THE ENTIRE FILE
+# ==============================================================================
+st.set_page_config(
+    page_title="Samketan AI — Secure Access",
+    page_icon="🔐",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
 import requests
 import smtplib
 import random
@@ -7,14 +18,6 @@ import json
 import base64
 from pathlib import Path
 from email.mime.text import MIMEText
-
-# NOTE: st.set_page_config MUST be the absolute first Streamlit command called!
-st.set_page_config(
-    page_title="Samketan AI — Secure Access",
-    page_icon="🔐",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
 
 # --- CONFIGURATION ---
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxkHAi7kn24BChb4zQktRE-u4kPY-sn9L96FLIqw4-czxzms03iCP1eNnPUGrAB_5HxA/exec"
@@ -72,9 +75,8 @@ def log_to_google_sheet(user_info, method):
 @st.cache_resource
 def get_google_authenticator():
     """
-    Creates and caches the Authenticate object to prevent duplicate element keys ('init')
+    Creates and caches the Authenticate object to completely eliminate duplicate element conflicts.
     """
-    # Detect which secrets block name format is currently saved
     if "google_oauth" in st.secrets:
         config = st.secrets["google_oauth"]
     elif "auth" in st.secrets:
@@ -98,7 +100,7 @@ def get_google_authenticator():
 # --- GOOGLE OAUTH HANDLER ---
 def handle_google_oauth():
     """
-    Handles Google OAuth callback context using cached resource instance.
+    Handles Google OAuth callback context safely using the cached resource instance.
     """
     try:
         if "google_oauth" not in st.secrets and "auth" not in st.secrets:
@@ -131,7 +133,7 @@ def inject_css(logo_b64=None):
 
     st.markdown(f"""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght=600;700&family=DM+Sans:wght=300;400;500&display=swap');
 
     /* Hide default Streamlit chrome on login page */
     #MainMenu, footer, header {{ visibility: hidden; }}
