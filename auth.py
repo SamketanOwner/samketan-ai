@@ -98,8 +98,11 @@ def handle_google_oauth():
             return True, authenticator
         return False, authenticator
     except ImportError:
+        st.error("Google Auth library failed to import. Check requirements.txt.")
         return False, None
-    except Exception:
+    except Exception as e:
+        # This will print the EXACT technical reason your secrets aren't working!
+        st.error(f"Google OAuth System Error: {e}")
         return False, None
 
 # --- CSS INJECTION ---
