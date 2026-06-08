@@ -9,11 +9,16 @@ from pathlib import Path
 from email.mime.text import MIMEText
 from urllib.parse import urlencode
 
-# --- CONFIGURATION ---
+# ==============================================================================
+# 🌟 CRITICAL GLOBAL CONFIGURATIONS
+# ==============================================================================
+# This reads your custom query string callback link (?google_callback=1) cleanly from secrets
+REDIRECT_URI = st.secrets["google_oauth"]["redirect_uri"]
+
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxkHAi7kn24BChb4zQktRE-u4kPY-sn9L96FLIqw4-czxzms03iCP1eNnPUGrAB_5HxA/exec"
 GMAIL_USER = "shgarampalli@gmail.com"
 GMAIL_PASS = "hbikssxqyzthscne"
-REDIRECT_URI = "https://samketanai.streamlit.app"
+
 
 # --- LOAD LOGO ---
 def get_logo_base64():
@@ -22,6 +27,7 @@ def get_logo_base64():
         with open(logo_path, "rb") as f:
             return base64.b64encode(f.read()).decode()
     return None
+
 
 # --- EMAIL OTP ---
 def send_otp_email(receiver_email, otp_code):
@@ -48,6 +54,7 @@ This code is valid for 10 minutes. Do not share it with anyone.
         st.error(f"Email Error: {e}")
         return False
 
+
 # --- GOOGLE SHEET LOG ---
 def log_to_google_sheet(user_info, method):
     try:
@@ -59,14 +66,6 @@ def log_to_google_sheet(user_info, method):
         requests.post(SCRIPT_URL, data=json.dumps(data))
     except:
         pass
-
-import streamlit as st
-import requests
-from urllib.parse import urlencode  # ✅ FIXED: Crucial import to prevent URL creation crash
-
-# --- CONFIGURATION (Safe Global Variable Mapping) ---
-# Grabs your live redirect link directly from your secrets panel
-REDIRECT_URI = st.secrets["google_oauth"]["redirect_uri"]
 
 
 # --- GOOGLE OAUTH FUNCTIONS ---
@@ -103,7 +102,7 @@ def exchange_code_for_user(code):
             "client_secret": client_secret,
             "redirect_uri": REDIRECT_URI,
             "grant_type": "authorization_code",
-        }, timeout=10) # Added timeout safety net
+        }, timeout=10)
         
         token_data = token_resp.json()
     except Exception as network_err:
@@ -140,17 +139,16 @@ def handle_google_callback():
     if not code:
         return False
 
-    # ✅ FIXED: We must extract user info FIRST before wiping query params out of the browser URL!
+    # Extract user info FIRST before wiping query params out of the browser URL
     user_info, error = exchange_code_for_user(code)
     
-    # Clean up the URL state immediately *after* the request is processed
+    # Clean up the URL state immediately after the request is processed
     st.query_params.clear()
 
     if error:
         st.session_state["google_error"] = error
         return False
 
-    # Log access and establish session state variables
     log_to_google_sheet(user_info["email"], "Google OAuth")
     st.session_state.authenticated  = True
     st.session_state.current_user   = user_info["email"]
@@ -241,6 +239,7 @@ def inject_css(logo_b64=None):
 
 # --- MAIN LOGIN ---
 def login_screen():
+    # Calling set_page_config strictly on the absolute first line inside the entry flow logic layout
     st.set_page_config(
         page_title="Samketan AI — Secure Access",
         page_icon="🔐",
