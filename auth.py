@@ -8,6 +8,14 @@ import base64
 from pathlib import Path
 from email.mime.text import MIMEText
 
+# NOTE: st.set_page_config MUST be the absolute first Streamlit command called!
+st.set_page_config(
+    page_title="Samketan AI — Secure Access",
+    page_icon="🔐",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
 # --- CONFIGURATION ---
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxkHAi7kn24BChb4zQktRE-u4kPY-sn9L96FLIqw4-czxzms03iCP1eNnPUGrAB_5HxA/exec"
 GMAIL_USER = "shgarampalli@gmail.com"
@@ -60,30 +68,46 @@ def log_to_google_sheet(user_info, method):
     except:
         pass
 
-# --- GOOGLE OAUTH HANDLER ---
+# --- CACHED AUTHENTICATOR CREATION ---
+@st.cache_resource
+def get_google_authenticator():
+    """
+    Creates and caches the Authenticate object to prevent duplicate element keys ('init')
+    """
+    # Detect which secrets block name format is currently saved
+    if "google_oauth" in st.secrets:
+        config = st.secrets["google_oauth"]
+    elif "auth" in st.secrets:
+        config = st.secrets["auth"]
+    else:
+        return None
+        
+    try:
+        from streamlit_google_auth import Authenticate
+        return Authenticate(
+            secret_credentials_path=None,
+            cookie_name="samketan_google_session",
+            cookie_key=config.get("cookie_key", config.get("cookie_secret", "samketan_key_2026")),
+            redirect_uri=config.get("redirect_uri", "https://samketanai.streamlit.app"),
+            client_id=config.get("client_id"),
+            client_secret=config.get("client_secret")
+        )
+    except Exception:
+        return None
+
 # --- GOOGLE OAUTH HANDLER ---
 def handle_google_oauth():
     """
-    Handles Google OAuth callback.
-    Call this ONCE at the very top of login_screen(), before any rendering.
-    Returns True if user is now authenticated via Google.
+    Handles Google OAuth callback context using cached resource instance.
     """
     try:
-        from streamlit_google_auth import Authenticate
-        
-        # Verify secrets are visible to the app container
-        if "google_oauth" not in st.secrets:
-            st.error("The [google_oauth] section is missing or unreadable in Streamlit Secrets dashboard.")
+        if "google_oauth" not in st.secrets and "auth" not in st.secrets:
             return False, None
 
-        # Let the library natively bind to st.secrets["google_oauth"]
-        authenticator = Authenticate(
-            secret_credentials_path=None,
-            cookie_name="samketan_google_session",
-            cookie_key=st.secrets["google_oauth"]["cookie_key"],
-            redirect_uri=st.secrets["google_oauth"]["redirect_uri"]
-        )
-        
+        authenticator = get_google_authenticator()
+        if authenticator is None:
+            return False, None
+            
         authenticator.check_authentification()
         if st.session_state.get("connected"):
             user_email = st.session_state["user_info"].get("email", "")
@@ -94,11 +118,7 @@ def handle_google_oauth():
             st.session_state.display_name  = user_name
             return True, authenticator
         return False, authenticator
-    except ImportError:
-        st.error("Library import failed. Ensure streamlit-google-auth is in requirements.txt")
-        return False, None
-    except Exception as e:
-        st.error(f"Initialization Error: {e}")
+    except Exception:
         return False, None
 
 # --- CSS INJECTION ---
@@ -278,14 +298,6 @@ def login_screen():
     if google_authed:
         st.rerun()
 
-    # Page config
-    st.set_page_config(
-        page_title="Samketan AI — Secure Access",
-        page_icon="🔐",
-        layout="wide",
-        initial_sidebar_state="collapsed"
-    )
-
     logo_b64 = get_logo_base64()
 
     # Two-column layout
@@ -317,7 +329,7 @@ def login_screen():
             google_icon = """<svg width="18" height="18" viewBox="0 0 18 18" style="vertical-align:-4px;margin-right:8px;" xmlns="http://www.w3.org/2000/svg"><g><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></g></svg>"""
 
             if google_authenticator is not None:
-                # Library is installed — render proper OAuth button
+                # Library is active and ready — run the button setup
                 st.markdown(f"""
                 <div style="
                     display:flex;align-items:center;justify-content:center;
@@ -338,10 +350,11 @@ def login_screen():
                   Continue with Google
                 </div>
                 """, unsafe_allow_html=True)
-                # The actual clickable Streamlit trigger
+                
+                # Render underlying library login click trigger logic
                 google_authenticator.login()
             else:
-                # Library not installed — show styled placeholder that informs user
+                # Fallback styled layout info block if secrets section is absent
                 st.markdown(f"""
                 <div style="
                     display:flex;align-items:center;justify-content:center;
@@ -375,8 +388,7 @@ def login_screen():
             </div>
             """, unsafe_allow_html=True)
 
-            # ===================== EXISTING EMAIL FLOW (unchanged) =====================
-            # Step bar
+            # ===================== EXISTING EMAIL FLOW =====================
             st.markdown("""
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
               <div style="height:5px;border-radius:3px;flex:1;background:#0D1B3E;"></div>
@@ -407,7 +419,7 @@ def login_screen():
                     st.error("Please enter a valid business email address.")
 
         else:
-            # ===================== OTP STEP 2 (completely unchanged) =====================
+            # ===================== OTP STEP 2 =====================
             st.markdown('<h2 style="font-family:\'Playfair Display\',Georgia,serif;font-size:22px;font-weight:700;color:#0D1B3E;margin:0 0 1.2rem;">Check your inbox</h2>', unsafe_allow_html=True)
 
             st.markdown("""
