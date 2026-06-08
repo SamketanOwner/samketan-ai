@@ -94,7 +94,8 @@ def get_google_authenticator():
             client_id=config.get("client_id"),
             client_secret=config.get("client_secret")
         )
-    except Exception:
+    except Exception as e:
+        st.session_state["google_auth_error"] = f"❌ Error: {type(e).__name__}: {e}"
         return None
 
 # --- GOOGLE OAUTH HANDLER ---
