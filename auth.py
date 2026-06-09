@@ -1,13 +1,4 @@
 import streamlit as st
-
-# MUST BE FIRST
-st.set_page_config(
-    page_title="Samketan AI — Secure Access",
-    page_icon="🔐",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
-
 import requests
 import smtplib
 import random
@@ -148,18 +139,6 @@ def login_screen():
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 
-    # ── Streamlit built-in OAuth check ──
-    try:
-        user = st.experimental_user
-        if user and hasattr(user, "email") and user.email and not user.email.endswith("@streamlit.io"):
-            if not st.session_state.authenticated:
-                log_to_google_sheet(user.email, "Google OAuth (built-in)")
-                st.session_state.authenticated = True
-                st.session_state.current_user = user.email
-                st.session_state.display_name = getattr(user, "name", user.email)
-    except Exception:
-        pass
-
     if st.session_state.authenticated:
         return True
 
@@ -170,8 +149,6 @@ def login_screen():
         inject_css(logo_b64)
 
     with col_right:
-        google_icon = '<svg width="18" height="18" viewBox="0 0 18 18" style="vertical-align:-4px;margin-right:8px;" xmlns="http://www.w3.org/2000/svg"><g><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></g></svg>'
-
         st.markdown("""
         <div style="padding:2.5rem 0.5rem;">
           <p style="font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#7b8aab;margin:0 0 5px;">Secure Access Portal</p>
@@ -179,20 +156,6 @@ def login_screen():
 
         if not st.session_state.get("otp_sent"):
             st.markdown('<h2 style="font-family:\'Playfair Display\',Georgia,serif;font-size:22px;font-weight:700;color:#0D1B3E;margin:0 0 1.2rem;">Sign in to your account</h2>', unsafe_allow_html=True)
-
-            st.markdown('<p style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#7b8aab;margin:0 0 8px;">Quick access</p>', unsafe_allow_html=True)
-
-            # ── Streamlit built-in Google login button ──
-            st.login("google")
-
-            # ── DIVIDER ──
-            st.markdown("""
-            <div style="display:flex;align-items:center;gap:12px;margin:1.1rem 0;">
-              <div style="flex:1;height:0.5px;background:#e0e4ef;"></div>
-              <span style="font-family:'DM Sans',sans-serif;font-size:12px;color:#aab0c2;white-space:nowrap;">or sign in with email</span>
-              <div style="flex:1;height:0.5px;background:#e0e4ef;"></div>
-            </div>
-            """, unsafe_allow_html=True)
 
             st.markdown("""
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
@@ -203,6 +166,7 @@ def login_screen():
             """, unsafe_allow_html=True)
 
             user_email = st.text_input("Business Email Address", placeholder="you@company.com", key="email_input")
+
             st.markdown("""
             <div style="background:#f0f5ff;border:0.5px solid #c8d6f5;border-radius:9px;padding:10px 14px;
                 display:flex;gap:10px;align-items:flex-start;margin-bottom:1rem;">
@@ -226,6 +190,7 @@ def login_screen():
 
         else:
             st.markdown('<h2 style="font-family:\'Playfair Display\',Georgia,serif;font-size:22px;font-weight:700;color:#0D1B3E;margin:0 0 1.2rem;">Check your inbox</h2>', unsafe_allow_html=True)
+
             st.markdown("""
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
               <div style="height:5px;border-radius:3px;flex:1;background:#0D1B3E;"></div>
@@ -252,9 +217,3 @@ def login_screen():
         st.markdown("</div>", unsafe_allow_html=True)
 
     return False
-
-
-if not login_screen():
-    st.stop()
-
-st.success("🎉 You are logged in!")
