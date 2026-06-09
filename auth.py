@@ -159,8 +159,9 @@ def inject_css(logo_b64=None):
     else:
         logo_html = '<div style="height:52px;width:52px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#7FB3FF;font-family:Georgia,serif;">SN</div>'
 
-    # ✅ GOOGLE WEB SITE METADATA VERIFICATION HANDSHAKE
+    # ✅ DUAL GOOGLE WEBSITE METADATA VERIFICATION HANDSHAKES
     st.markdown('<meta name="google-site-verification" content="NToh75b655cIVA891yX1QYqoLhvDFPi_lKZCmkfXYyM" />', unsafe_allow_html=True)
+    st.markdown('<meta name="google-site-verification" content="googlef815f4b984710822" />', unsafe_allow_html=True)
 
     st.markdown(f"""
     <style>
