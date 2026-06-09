@@ -9,6 +9,12 @@ from pathlib import Path
 from email.mime.text import MIMEText
 from urllib.parse import urlencode
 
+# --- GOOGLE SEARCH CONSOLE HANDSHAKE INTERCEPTOR ---
+# This catches Google's crawler immediately at launch and bypasses the login screen stops
+if "1l1acsuRs_JTla17cgZxDFR8fkYF46y1fBxfGin7lNw" in str(st.query_params):
+    st.write("google-site-verification: 1l1acsuRs_JTla17cgZxDFR8fkYF46y1fBxfGin7lNw")
+    st.stop()
+
 # --- CONFIGURATION ---
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxkHAi7kn24BChb4zQktRE-u4kPY-sn9L96FLIqw4-czxzms03iCP1eNnPUGrAB_5HxA/exec"
 GMAIL_USER = "shgarampalli@gmail.com"
