@@ -9,14 +9,6 @@ from pathlib import Path
 from email.mime.text import MIMEText
 from urllib.parse import urlencode
 
-# --- GOOGLE SEARCH CONSOLE HANDSHAKE INTERCEPTOR ---
-# Catch any native crawler routes or query tags before the app hits the login restrictions
-current_query_str = str(st.query_params).lower()
-if "1l1acsuRs" in str(st.query_params) or "googlef815f4b984710822" in current_query_str:
-    st.write("google-site-verification: googlef815f4b984710822.html")
-    st.write("google-site-verification: 1l1acsuRs_JTla17cgZxDFR8fkYF46y1fBxfGin7lNw")
-    st.stop()
-
 # --- CONFIGURATION ---
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxkHAi7kn24BChb4zQktRE-u4kPY-sn9L96FLIqw4-czxzms03iCP1eNnPUGrAB_5HxA/exec"
 GMAIL_USER = "shgarampalli@gmail.com"
