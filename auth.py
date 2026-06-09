@@ -10,8 +10,10 @@ from email.mime.text import MIMEText
 from urllib.parse import urlencode
 
 # --- GOOGLE SEARCH CONSOLE HANDSHAKE INTERCEPTOR ---
-# This catches Google's crawler immediately at launch and bypasses the login screen stops
-if "1l1acsuRs_JTla17cgZxDFR8fkYF46y1fBxfGin7lNw" in str(st.query_params):
+# Catch any native crawler routes or query tags before the app hits the login restrictions
+current_query_str = str(st.query_params).lower()
+if "1l1acsuRs" in str(st.query_params) or "googlef815f4b984710822" in current_query_str:
+    st.write("google-site-verification: googlef815f4b984710822.html")
     st.write("google-site-verification: 1l1acsuRs_JTla17cgZxDFR8fkYF46y1fBxfGin7lNw")
     st.stop()
 
@@ -165,9 +167,9 @@ def inject_css(logo_b64=None):
     else:
         logo_html = '<div style="height:52px;width:52px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#7FB3FF;font-family:Georgia,serif;">SN</div>'
 
-    # ✅ DUAL GOOGLE WEBSITE METADATA VERIFICATION HANDSHAKES
+    # ✅ MASTER COMPILATION METADATA VERIFICATION HANDSHAKES
     st.markdown('<meta name="google-site-verification" content="NToh75b655cIVA891yX1QYqoLhvDFPi_lKZCmkfXYyM" />', unsafe_allow_html=True)
-    st.markdown('<meta name="google-site-verification" content="googlef815f4b984710822" />', unsafe_allow_html=True)
+    st.markdown('<meta name="google-site-verification" content="1l1acsuRs_JTla17cgZxDFR8fkYF46y1fBxfGin7lNw" />', unsafe_allow_html=True)
 
     st.markdown(f"""
     <style>
@@ -232,7 +234,7 @@ def inject_css(logo_b64=None):
         <a href="https://bhoodeviwarehouse.com/" target="_blank" style="display:flex;align-items:flex-start;gap:10px;text-decoration:none;padding:10px 12px;border-radius:10px;border:0.5px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);">
           <div style="width:7px;height:7px;border-radius:50%;background:#4CAF82;margin-top:5px;flex-shrink:0;"></div>
           <div>
-            <div style="font-size:13px;font-weight:500;color:#7FB3FF;text-decoration:underline;text-underline-offset:3px;margin-bottom:3px;">Bhoodevi Warehouse</div>
+            <div style="font-size:13px;font-weight:500;color:#7FB3FF;text-underline-offset:3px;margin-bottom:3px;">Bhoodevi Warehouse</div>
             <div style="font-size:11px;color:rgba(255,255,255,0.33);">21,000 sq.ft · CWC Empanelled · Kalaburagi</div>
           </div>
           <div style="margin-left:auto;font-size:13px;color:rgba(255,255,255,0.3);">↗</div>
