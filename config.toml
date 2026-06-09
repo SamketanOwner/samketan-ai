@@ -1,2 +1,5 @@
+[browser]
+gatherUsageStats = false
+
 [client]
-googleAnalyticsId = "G-G5BC9KSQSZ"
+googleAnalyticsId = "1l1acsuRs_JTla17cgZxDFR8fkYF46y1fBxfGin7lNw"
