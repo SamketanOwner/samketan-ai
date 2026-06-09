@@ -183,25 +183,7 @@ def login_screen():
             st.markdown('<p style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#7b8aab;margin:0 0 8px;">Quick access</p>', unsafe_allow_html=True)
 
             # ── Streamlit built-in Google login button ──
-            try:
-                if hasattr(st, "login"):
-                    st.markdown(f"""
-                    <div style="margin-bottom:8px;">
-                    """, unsafe_allow_html=True)
-                    st.login("google")
-                    st.markdown("</div>", unsafe_allow_html=True)
-                else:
-                    st.markdown(f"""
-                    <div style="display:flex;align-items:center;justify-content:center;gap:8px;
-                        background:#f5f5f5;border:1px solid #dadce0;border-radius:9px;
-                        padding:11px 16px;color:#9aa0ae;font-size:14px;font-family:'DM Sans',sans-serif;
-                        margin-bottom:8px;">
-                      {google_icon} Continue with Google
-                      <span style="margin-left:auto;font-size:10px;color:#bbb;">Upgrade Streamlit</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f"Google login error: {e}")
+            st.login("google")
 
             # ── DIVIDER ──
             st.markdown("""
