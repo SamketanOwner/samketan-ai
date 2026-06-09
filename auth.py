@@ -7,12 +7,17 @@ import json
 import base64
 from pathlib import Path
 from email.mime.text import MIMEText
+from urllib.parse import urlencode
 
 # --- CONFIGURATION ---
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxkHAi7kn24BChb4zQktRE-u4kPY-sn9L96FLIqw4-czxzms03iCP1eNnPUGrAB_5HxA/exec"
 GMAIL_USER = "shgarampalli@gmail.com"
 GMAIL_PASS = "hbikssxqyzthscne"
 
+# Dynamically reads your exact custom callback string from your Streamlit secrets dashboard
+REDIRECT_URI = st.secrets["google_oauth"]["redirect_uri"]
+
+# --- LOAD LOGO ---
 def get_logo_base64():
     logo_path = Path("logo_samketan.png")
     if logo_path.exists():
@@ -20,6 +25,7 @@ def get_logo_base64():
             return base64.b64encode(f.read()).decode()
     return None
 
+# --- EMAIL OTP ---
 def send_otp_email(receiver_email, otp_code):
     try:
         msg = MIMEText(f"""
@@ -44,6 +50,7 @@ This code is valid for 10 minutes. Do not share it with anyone.
         st.error(f"Email Error: {e}")
         return False
 
+# --- GOOGLE SHEET LOG ---
 def log_to_google_sheet(user_info, method):
     try:
         data = {
@@ -55,12 +62,105 @@ def log_to_google_sheet(user_info, method):
     except:
         pass
 
+# --- GOOGLE OAUTH HANDLERS ---
+def get_google_auth_url():
+    """Build Google OAuth URL — opens Google login popup with strict path cleaning"""
+    try:
+        client_id = st.secrets["google_oauth"]["client_id"]
+    except Exception:
+        return None
+    
+    # Removes any accidental background trailing slashes to guarantee exact console match
+    clean_redirect_uri = REDIRECT_URI.rstrip('/')
+    
+    params = {
+        "client_id": client_id,
+        "redirect_uri": clean_redirect_uri,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "offline",
+        "prompt": "select_account",
+    }
+    return "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
+
+
+def exchange_code_for_user(code):
+    """Exchange authorization code for user profile properties natively via requests"""
+    try:
+        client_id     = st.secrets["google_oauth"]["client_id"]
+        client_secret = st.secrets["google_oauth"]["client_secret"]
+    except Exception as e:
+        return None, f"Secrets error: {e}"
+
+    clean_redirect_uri = REDIRECT_URI.rstrip('/')
+
+    try:
+        token_resp = requests.post("https://oauth2.googleapis.com/token", data={
+            "code": code,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uri": clean_redirect_uri,
+            "grant_type": "authorization_code",
+        }, timeout=10)
+        token_data = token_resp.json()
+    except Exception as network_err:
+        return None, f"Handshake network failure: {network_err}"
+
+    if "error" in token_data:
+        return None, f"Token validation crash: {token_data.get('error_description', token_data['error'])}"
+
+    access_token = token_data.get("access_token")
+    if not access_token:
+        return None, "No active access token block delivered."
+
+    try:
+        user_resp = requests.get("https://www.googleapis.com/oauth2/v2/userinfo",
+                                 headers={"Authorization": f"Bearer {access_token}"}, timeout=10)
+        user_data = user_resp.json()
+    except Exception as info_err:
+        return None, f"User parsing target missing: {info_err}"
+
+    email = user_data.get("email")
+    name  = user_data.get("name", email)
+
+    if not email:
+        return None, "Google verification payload lacked an explicit email identity reference."
+
+    return {"email": email, "name": name}, None
+
+
+def handle_google_callback():
+    """Verify context paths to trap active OAuth redirects landing inside URL layers"""
+    params = st.query_params
+    code = params.get("code")
+    if not code:
+        return False
+
+    # Exchange token variables FIRST before wiping active parameter layout records
+    user_info, error = exchange_code_for_user(code)
+    st.query_params.clear()
+
+    if error:
+        st.session_state["google_error"] = error
+        return False
+
+    log_to_google_sheet(user_info["email"], "Google OAuth")
+    st.session_state.authenticated = True
+    st.session_state.current_user  = user_info["email"]
+    st.session_state.display_name  = user_info["name"]
+    return True
+
+
+# --- CSS + LEFT PANEL LAYOUT ---
 def inject_css(logo_b64=None):
     logo_html = ""
     if logo_b64:
         logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="height:52px;width:52px;border-radius:50%;object-fit:contain;background:#fff;padding:4px;" alt="Samketan AI Logo">'
     else:
         logo_html = '<div style="height:52px;width:52px;border-radius:50%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#7FB3FF;font-family:Georgia,serif;">SN</div>'
+
+    # ✅ GOOGLE WEB SITE METADATA VERIFICATION HANDSHAKE
+    st.markdown('<meta name="google-site-verification" content="NToh75b655cIVA891yX1QYqoLhvDFPi_lKZCmkfXYyM" />', unsafe_allow_html=True)
 
     st.markdown(f"""
     <style>
@@ -135,9 +235,21 @@ def inject_css(logo_b64=None):
     """, unsafe_allow_html=True)
 
 
+# --- MAIN LOGIN INTERFACE ---
 def login_screen():
+    st.set_page_config(
+        page_title="Samketan AI — Secure Access",
+        page_icon="🔐",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
+
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
+
+    # ── Handle background Google OAuth redirect loop data mapping ──
+    if handle_google_callback():
+        st.rerun()
 
     if st.session_state.authenticated:
         return True
@@ -149,14 +261,68 @@ def login_screen():
         inject_css(logo_b64)
 
     with col_right:
+        google_icon = '<svg width="18" height="18" viewBox="0 0 18 18" style="vertical-align:-4px;margin-right:8px;" xmlns="http://www.w3.org/2000/svg"><g><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></g></svg>'
+
         st.markdown("""
         <div style="padding:2.5rem 0.5rem;">
           <p style="font-family:'DM Sans',sans-serif;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#7b8aab;margin:0 0 5px;">Secure Access Portal</p>
         """, unsafe_allow_html=True)
 
         if not st.session_state.get("otp_sent"):
-            st.markdown('<h2 style="font-family:\'Playfair Display\',Georgia,serif;font-size:22px;font-weight:700;color:#0D1B3E;margin:0 0 1.2rem;">Sign in to your account</h2>', unsafe_allow_html=True)
+            # ✅ VISIBLE EXACT APP NAME TEXT MATCH FOR GOOGLE BRAND REVIEW
+            st.markdown('<h1 style="font-family:\'Playfair Display\',Georgia,serif;font-size:26px;font-weight:700;color:#0D1B3E;margin:0 0 0.5rem;">Samketan AI</h1>', unsafe_allow_html=True)
+            
+            # ✅ EXPLICIT APP PURPOSE PARAGRAPH REQUIREMENT FOR SEARCH CONSOLE Handshake
+            st.markdown("""
+            <p style="font-family:'DM Sans',sans-serif;font-size:13px;color:#4a5a8a;line-height:1.6;margin:0 0 1.5rem;">
+                Welcome to <strong>Samketan AI</strong>. This application platform operates as a secure B2B lead generation, demand generation, and enterprise data analytics workspace built to connect industrial, enterprise, and agriculture networks.
+            </p>
+            """, unsafe_allow_html=True)
 
+            # ── GOOGLE ROUTING GATEWAY BUTTON ──
+            st.markdown('<p style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#7b8aab;margin:0 0 8px;">Quick access</p>', unsafe_allow_html=True)
+
+            if st.session_state.get("google_error"):
+                st.error(f"Google Sign-In failed: {st.session_state.google_error}")
+                st.session_state.pop("google_error", None)
+
+            auth_url = get_google_auth_url()
+
+            if auth_url:
+                st.markdown(f"""
+                <a href="{auth_url}" target="_self" style="
+                    display:flex;align-items:center;justify-content:center;
+                    gap:8px; background:#fff; border:1px solid #dadce0;
+                    border-radius:9px; padding:11px 16px; text-decoration:none;
+                    font-family:'DM Sans',sans-serif; font-size:14px;
+                    font-weight:500; color:#3c4043; margin-bottom:4px;
+                    box-shadow:0 1px 3px rgba(0,0,0,0.08); transition:box-shadow 0.2s;
+                ">
+                  {google_icon}
+                  Continue with Google
+                </a>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div style="display:flex;align-items:center;justify-content:center;gap:8px;
+                    background:#f5f5f5;border:1px solid #dadce0;border-radius:9px;
+                    padding:11px 16px;color:#9aa0ae;font-size:14px;font-family:'DM Sans',sans-serif;
+                    margin-bottom:4px;">
+                  {google_icon} Continue with Google
+                  <span style="margin-left:auto;font-size:10px;color:#bbb;">Configuration Setup Needed</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # ── LAYOUT DIVIDER ──
+            st.markdown("""
+            <div style="display:flex;align-items:center;gap:12px;margin:1.1rem 0;">
+              <div style="flex:1;height:0.5px;background:#e0e4ef;"></div>
+              <span style="font-family:'DM Sans',sans-serif;font-size:12px;color:#aab0c2;white-space:nowrap;">or sign in with email</span>
+              <div style="flex:1;height:0.5px;background:#e0e4ef;"></div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # ── EMAIL STEP 1 INTERFACE ──
             st.markdown("""
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
               <div style="height:5px;border-radius:3px;flex:1;background:#0D1B3E;"></div>
@@ -166,7 +332,6 @@ def login_screen():
             """, unsafe_allow_html=True)
 
             user_email = st.text_input("Business Email Address", placeholder="you@company.com", key="email_input")
-
             st.markdown("""
             <div style="background:#f0f5ff;border:0.5px solid #c8d6f5;border-radius:9px;padding:10px 14px;
                 display:flex;gap:10px;align-items:flex-start;margin-bottom:1rem;">
@@ -189,8 +354,8 @@ def login_screen():
                     st.error("Please enter a valid business email address.")
 
         else:
+            # ── EMAIL STEP 2 (OTP ENTRY VALIDATION) ──
             st.markdown('<h2 style="font-family:\'Playfair Display\',Georgia,serif;font-size:22px;font-weight:700;color:#0D1B3E;margin:0 0 1.2rem;">Check your inbox</h2>', unsafe_allow_html=True)
-
             st.markdown("""
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
               <div style="height:5px;border-radius:3px;flex:1;background:#0D1B3E;"></div>
@@ -217,3 +382,10 @@ def login_screen():
         st.markdown("</div>", unsafe_allow_html=True)
 
     return False
+
+
+# --- ENTRY POINT ---
+if __name__ == "__main__":
+    if not login_screen():
+        st.stop()
+    st.success("🎉 You are logged in! Replace this with your main Samketan AI app content.")
