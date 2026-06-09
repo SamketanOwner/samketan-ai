@@ -1,4 +1,13 @@
 import streamlit as st
+
+# MUST BE FIRST
+st.set_page_config(
+    page_title="Samketan AI — Secure Access",
+    page_icon="🔐",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
 import requests
 import smtplib
 import random
@@ -7,20 +16,12 @@ import json
 import base64
 from pathlib import Path
 from email.mime.text import MIMEText
-from urllib.parse import urlencode
 
-# ==============================================================================
-# 🌟 CRITICAL GLOBAL CONFIGURATIONS
-# ==============================================================================
-# This reads your custom query string callback link (?google_callback=1) cleanly from secrets
-REDIRECT_URI = st.secrets["google_oauth"]["redirect_uri"]
-
+# --- CONFIGURATION ---
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxkHAi7kn24BChb4zQktRE-u4kPY-sn9L96FLIqw4-czxzms03iCP1eNnPUGrAB_5HxA/exec"
 GMAIL_USER = "shgarampalli@gmail.com"
 GMAIL_PASS = "hbikssxqyzthscne"
 
-
-# --- LOAD LOGO ---
 def get_logo_base64():
     logo_path = Path("logo_samketan.png")
     if logo_path.exists():
@@ -28,8 +29,6 @@ def get_logo_base64():
             return base64.b64encode(f.read()).decode()
     return None
 
-
-# --- EMAIL OTP ---
 def send_otp_email(receiver_email, otp_code):
     try:
         msg = MIMEText(f"""
@@ -54,8 +53,6 @@ This code is valid for 10 minutes. Do not share it with anyone.
         st.error(f"Email Error: {e}")
         return False
 
-
-# --- GOOGLE SHEET LOG ---
 def log_to_google_sheet(user_info, method):
     try:
         data = {
@@ -67,104 +64,6 @@ def log_to_google_sheet(user_info, method):
     except:
         pass
 
-
-# --- GOOGLE OAUTH FUNCTIONS ---
-def get_google_auth_url():
-    """Build Google OAuth URL — opens Google login popup with forced strict URI cleaning"""
-    try:
-        client_id = st.secrets["google_oauth"]["client_id"]
-    except Exception:
-        return None
-    
-    # Force clean any background trailing slashes from the secrets parameter
-    clean_redirect_uri = REDIRECT_URI.rstrip('/')
-    
-    params = {
-        "client_id": client_id,
-        "redirect_uri": clean_redirect_uri,
-        "response_type": "code",
-        "scope": "openid email profile",
-        "access_type": "offline",
-        "prompt": "select_account",
-    }
-    return "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
-
-
-def exchange_code_for_user(code):
-    """Exchange auth code for user email using strict requests parameters"""
-    try:
-        client_id     = st.secrets["google_oauth"]["client_id"]
-        client_secret = st.secrets["google_oauth"]["client_secret"]
-    except Exception as e:
-        return None, f"Secrets error: {e}"
-
-    # Force clean any background trailing slashes from the secrets parameter
-    clean_redirect_uri = REDIRECT_URI.rstrip('/')
-
-    # Exchange code for token
-    try:
-        token_resp = requests.post("https://oauth2.googleapis.com/token", data={
-            "code": code,
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "redirect_uri": clean_redirect_uri,
-            "grant_type": "authorization_code",
-        }, timeout=10)
-        
-        token_data = token_resp.json()
-    except Exception as network_err:
-        return None, f"Network handshake failed: {network_err}"
-
-    if "error" in token_data:
-        return None, f"Token error: {token_data.get('error_description', token_data['error'])}"
-
-    access_token = token_data.get("access_token")
-    if not access_token:
-        return None, "No access token received"
-
-    # Get user info
-    try:
-        user_resp = requests.get("https://www.googleapis.com/oauth2/v2/userinfo",
-                                 headers={"Authorization": f"Bearer {access_token}"}, timeout=10)
-        user_data = user_resp.json()
-    except Exception as info_err:
-        return None, f"User info fetch failed: {info_err}"
-
-    email = user_data.get("email")
-    name  = user_data.get("name", email)
-
-    if not email:
-        return None, "Could not retrieve email from Google"
-
-    return {"email": email, "name": name}, None
-
-
-def handle_google_callback():
-    """Check if Google redirected back with ?code=... in URL while handling explicit parameter state"""
-    # Use Streamlit's native path parsing to catch code regardless of double slash updates
-    params = st.query_params
-    code = params.get("code")
-    if not code:
-        return False
-
-    # Exchange code for token FIRST before removing parameters
-    user_info, error = exchange_code_for_user(code)
-    
-    # Clear parameter trailing states cleanly
-    st.query_params.clear()
-
-    if error:
-        st.session_state["google_error"] = error
-        return False
-
-    log_to_google_sheet(user_info["email"], "Google OAuth")
-    st.session_state.authenticated  = True
-    st.session_state.current_user   = user_info["email"]
-    st.session_state.display_name   = user_info["name"]
-    return True
-
-
-# --- CSS + LEFT PANEL ---
 def inject_css(logo_b64=None):
     logo_html = ""
     if logo_b64:
@@ -245,22 +144,21 @@ def inject_css(logo_b64=None):
     """, unsafe_allow_html=True)
 
 
-# --- MAIN LOGIN ---
 def login_screen():
-    # Calling set_page_config strictly on the absolute first line inside the entry flow logic layout
-    st.set_page_config(
-        page_title="Samketan AI — Secure Access",
-        page_icon="🔐",
-        layout="wide",
-        initial_sidebar_state="collapsed"
-    )
-
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 
-    # ── Handle Google OAuth callback (code in URL) ──
-    if handle_google_callback():
-        st.rerun()
+    # ── Streamlit built-in OAuth check ──
+    try:
+        user = st.experimental_user
+        if user and hasattr(user, "email") and user.email and not user.email.endswith("@streamlit.io"):
+            if not st.session_state.authenticated:
+                log_to_google_sheet(user.email, "Google OAuth (built-in)")
+                st.session_state.authenticated = True
+                st.session_state.current_user = user.email
+                st.session_state.display_name = getattr(user, "name", user.email)
+    except Exception:
+        pass
 
     if st.session_state.authenticated:
         return True
@@ -282,50 +180,28 @@ def login_screen():
         if not st.session_state.get("otp_sent"):
             st.markdown('<h2 style="font-family:\'Playfair Display\',Georgia,serif;font-size:22px;font-weight:700;color:#0D1B3E;margin:0 0 1.2rem;">Sign in to your account</h2>', unsafe_allow_html=True)
 
-            # ── GOOGLE BUTTON ──
             st.markdown('<p style="font-family:\'DM Sans\',sans-serif;font-size:12px;color:#7b8aab;margin:0 0 8px;">Quick access</p>', unsafe_allow_html=True)
 
-            # Show any Google error
-            if st.session_state.get("google_error"):
-                st.error(f"Google Sign-In failed: {st.session_state.google_error}")
-                st.session_state.pop("google_error", None)
-
-            # Build auth URL
-            auth_url = get_google_auth_url()
-
-            if auth_url:
-                # Real clickable Google button using st.link_button styled via HTML
-                st.markdown(f"""
-                <a href="{auth_url}" target="_self" style="
-                    display:flex;align-items:center;justify-content:center;
-                    gap:8px;
-                    background:#fff;
-                    border:1px solid #dadce0;
-                    border-radius:9px;
-                    padding:11px 16px;
-                    text-decoration:none;
-                    font-family:'DM Sans',sans-serif;
-                    font-size:14px;
-                    font-weight:500;
-                    color:#3c4043;
-                    margin-bottom:4px;
-                    box-shadow:0 1px 3px rgba(0,0,0,0.08);
-                    transition:box-shadow 0.2s;
-                ">
-                  {google_icon}
-                  Continue with Google
-                </a>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div style="display:flex;align-items:center;justify-content:center;gap:8px;
-                    background:#f5f5f5;border:1px solid #dadce0;border-radius:9px;
-                    padding:11px 16px;color:#9aa0ae;font-size:14px;font-family:'DM Sans',sans-serif;
-                    margin-bottom:4px;">
-                  {google_icon} Continue with Google
-                  <span style="margin-left:auto;font-size:10px;color:#bbb;">Add client_id to secrets</span>
-                </div>
-                """, unsafe_allow_html=True)
+            # ── Streamlit built-in Google login button ──
+            try:
+                if hasattr(st, "login"):
+                    st.markdown(f"""
+                    <div style="margin-bottom:8px;">
+                    """, unsafe_allow_html=True)
+                    st.login("google")
+                    st.markdown("</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                    <div style="display:flex;align-items:center;justify-content:center;gap:8px;
+                        background:#f5f5f5;border:1px solid #dadce0;border-radius:9px;
+                        padding:11px 16px;color:#9aa0ae;font-size:14px;font-family:'DM Sans',sans-serif;
+                        margin-bottom:8px;">
+                      {google_icon} Continue with Google
+                      <span style="margin-left:auto;font-size:10px;color:#bbb;">Upgrade Streamlit</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"Google login error: {e}")
 
             # ── DIVIDER ──
             st.markdown("""
@@ -336,7 +212,6 @@ def login_screen():
             </div>
             """, unsafe_allow_html=True)
 
-            # ── STEP BAR ──
             st.markdown("""
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
               <div style="height:5px;border-radius:3px;flex:1;background:#0D1B3E;"></div>
@@ -368,7 +243,6 @@ def login_screen():
                     st.error("Please enter a valid business email address.")
 
         else:
-            # ── OTP STEP 2 ──
             st.markdown('<h2 style="font-family:\'Playfair Display\',Georgia,serif;font-size:22px;font-weight:700;color:#0D1B3E;margin:0 0 1.2rem;">Check your inbox</h2>', unsafe_allow_html=True)
             st.markdown("""
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.2rem;">
@@ -398,8 +272,7 @@ def login_screen():
     return False
 
 
-# --- ENTRY POINT ---
-if __name__ == "__main__":
-    if not login_screen():
-        st.stop()
-    st.success("🎉 You are logged in!")
+if not login_screen():
+    st.stop()
+
+st.success("🎉 You are logged in!")
