@@ -314,6 +314,15 @@ def login_screen():
                 </div>
                 """, unsafe_allow_html=True)
 
+            # ⚙️ FIXED: INNER HTML FALLBACK NOTICE INJECTED DIRECTLY UNDER THE GOOGLE INTERFACE
+            st.markdown("""
+            <div style="margin-top: 8px; margin-bottom: 4px; padding: 10px 12px; background: #fffdf5; border: 0.5px solid #f3ebd3; border-radius: 8px;">
+                <p style="font-family:'DM Sans',sans-serif; font-size: 11.5px; color: #7c6e43; margin: 0; line-height: 1.5;">
+                    ⚠️ <strong>Facing issues or seeing errors with Google Login?</strong> If the authentication panel displays a 403 screen or encounters regional network latency, please use the <strong>Email and OTP</strong> option below for instant workspace access.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
             # ── LAYOUT DIVIDER ──
             st.markdown("""
             <div style="display:flex;align-items:center;gap:12px;margin:1.1rem 0;">
