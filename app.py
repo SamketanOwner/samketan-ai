@@ -434,22 +434,18 @@ def get_hunter_email(first_name, last_name, company_name, api_key=None):
 # FIX 2: LINKEDIN DIRECT PROFILE SEARCH
 # ─────────────────────────────────────────────
 def build_linkedin_url(first_name, last_name, company, existing_url=""):
-    """FIX 2: Build proper LinkedIn search URL that shows actual profiles"""
-    if existing_url and "linkedin.com/in/" in existing_url:
-        return existing_url  # Already a direct profile URL
+    # Use direct profile if available
+    if existing_url and "linkedin.com/in/" in str(existing_url):
+        return existing_url.strip()
     
-    # Build a direct people search that filters by company
-    name_query = f"{first_name} {last_name}"
-    company_query = company
-    
-    # LinkedIn people search with company filter — shows real profiles
-    search_url = (
-        f"https://www.linkedin.com/search/results/people/"
-        f"?keywords={urllib.parse.quote(name_query)}"
-        f"&company={urllib.parse.quote(company_query)}"
-        f"&origin=GLOBAL_SEARCH_HEADER"
+    # Search name + company together — finds the RIGHT person
+    full_query = f"{first_name} {last_name} {company}"
+    url = (
+        "https://www.linkedin.com/search/results/people/"
+        f"?keywords={urllib.parse.quote(full_query)}"
+        "&origin=GLOBAL_SEARCH_HEADER"
     )
-    return search_url
+    return url
 
 # ─────────────────────────────────────────────
 # FIX 3: RAG CONTEXT BUILDER
@@ -693,16 +689,16 @@ with st.sidebar:
     )
 
     # FIX 4: Logout button — always visible at top of sidebar
-    st.markdown('<div class="logout-btn">', unsafe_allow_html=True)
-    if st.button("🚪 Sign Out", use_container_width=True, key="logout_top"):
-        try:
-            cookie_manager.delete("samketan_user")
-        except:
-            pass
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+st.markdown("---")
+if st.button("🚪 Sign Out", key="logout_btn", type="secondary", use_container_width=True):
+    try:
+        cookie_manager.delete("samketan_user")
+    except:
+        pass
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
+st.markdown("---")
 
     st.markdown("---")
     st.markdown("### 🔑 API Status")
