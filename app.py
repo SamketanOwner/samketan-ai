@@ -687,18 +687,16 @@ with st.sidebar:
         '<div class="user-chip">✅ ' + esc(st.session_state.get("current_user", "User")) + "</div>",
         unsafe_allow_html=True,
     )
-
-    # FIX 4: Logout button — always visible at top of sidebar
-st.markdown("---")
-if st.button("🚪 Sign Out", key="logout_btn", type="secondary", use_container_width=True):
-    try:
-        cookie_manager.delete("samketan_user")
-    except:
-        pass
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.rerun()
-st.markdown("---")
+    st.markdown("---")
+    if st.button("🚪 Sign Out", key="logout_btn", type="secondary", use_container_width=True):
+        try:
+            cookie_manager.delete("samketan_user")
+        except:
+            pass
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
+    st.markdown("---")
 
     st.markdown("---")
     st.markdown("### 🔑 API Status")
