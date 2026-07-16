@@ -9,6 +9,18 @@ import google.generativeai as genai
 import pandas as pd
 import streamlit as st
 import requests
+import socket
+
+# NEW: the unified google-genai SDK is required for real "Grounding with
+# Google Search" — this is what actually lets Gemini search the live web
+# instead of guessing companies from memory. Add "google-genai" to
+# requirements.txt for this to activate.
+try:
+    from google import genai as ggenai
+    from google.genai import types as ggenai_types
+    GROUNDED_SDK_AVAILABLE = True
+except Exception:
+    GROUNDED_SDK_AVAILABLE = False
 
 try:
     import extra_streamlit_components as stx
@@ -220,6 +232,7 @@ _all_keys = [
 _valid_keys = [k for k in _all_keys if k and k.strip()]
 gemini_key = _valid_keys[0] if _valid_keys else ""
 HUNTER_API_KEY = get_streamlit_secret("HUNTER_API_KEY", "")
+GOOGLE_MAPS_API_KEY = get_streamlit_secret("GOOGLE_MAPS_API_KEY", "")
 
 # ---------------------------------------------
 # SESSION STATE INIT
@@ -387,14 +400,35 @@ def extract_domain_from_company(company_name):
     
     return f"{name}.com"
 
-def get_hunter_email(first_name, last_name, company_name, api_key=None):
-    """FIX 1: Improved Hunter.io email finder with better error handling"""
+def verify_domain_exists(domain):
+    """FIX 5: Check the guessed/provided domain actually resolves before we
+    waste a Hunter.io credit on it. This alone kills a huge share of the
+    'No email found' results, because most were never real domains."""
+    try:
+        socket.setdefaulttimeout(4)
+        socket.gethostbyname(domain)
+        return True
+    except Exception:
+        return False
+
+def get_hunter_email(first_name, last_name, company_name, api_key=None, known_domain=None):
+    """FIX 1 + FIX 5: Improved Hunter.io email finder — now verifies the
+    domain exists first, and accepts a real domain (e.g. from Google Places)
+    instead of always guessing one from the company name."""
     key = api_key or HUNTER_API_KEY
     if not key or not key.strip():
         return None, "No Hunter API key configured in secrets"
-    
-    domain = extract_domain_from_company(company_name)
-    
+
+    domain = (known_domain or "").strip().lower().replace("https://", "").replace("http://", "").strip("/")
+    if not domain:
+        domain = extract_domain_from_company(company_name)
+
+    if not verify_domain_exists(domain):
+        return None, (
+            f"'{domain}' does not resolve — this was a guessed domain, not a verified one. "
+            f"Find the company's real website first (Google Places / Google Search) and re-run."
+        )
+
     # Try email finder first
     try:
         url = f"https://api.hunter.io/v2/email-finder"
@@ -572,6 +606,166 @@ def agent_gemini_scout(region, target_client, my_product, our_product, num_leads
     response, model_name = call_gemini_with_retry(prompt)
     return response.text, model_name
 
+# ─────────────────────────────────────────────
+# FIX 6: GOOGLE PLACES — REAL, VERIFIED BUSINESSES
+# This is the single highest-impact fix. Instead of asking Gemini to
+# "remember" companies, this hits Google's live business database and
+# returns businesses that provably exist right now, with real address,
+# phone, website and rating. Needs GOOGLE_MAPS_API_KEY in secrets
+# (enable "Places API (New)" on the same Google Cloud project as your
+# Gemini key — new Cloud accounts get a $200/month usage credit).
+# ─────────────────────────────────────────────
+def agent_places_discovery(search_query, api_key=None, max_results=10):
+    key = (api_key or GOOGLE_MAPS_API_KEY or "").strip()
+    if not key:
+        return [], "No GOOGLE_MAPS_API_KEY configured — Places discovery skipped"
+    url = "https://places.googleapis.com/v1/places:searchText"
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": (
+            "places.displayName,places.formattedAddress,"
+            "places.internationalPhoneNumber,places.websiteUri,"
+            "places.rating,places.userRatingCount,places.businessStatus"
+        ),
+    }
+    body = {"textQuery": search_query, "maxResultCount": min(max_results, 20)}
+    try:
+        resp = requests.post(url, headers=headers, json=body, timeout=20)
+        data = resp.json()
+        if "error" in data:
+            return [], "Places API error: " + str(data["error"].get("message", "unknown"))
+        results = []
+        for p in data.get("places", []):
+            if p.get("businessStatus") == "CLOSED_PERMANENTLY":
+                continue
+            results.append({
+                "company": p.get("displayName", {}).get("text", ""),
+                "address": p.get("formattedAddress", ""),
+                "phone": p.get("internationalPhoneNumber", "Not Listed"),
+                "website": p.get("websiteUri", ""),
+                "rating": p.get("rating", ""),
+                "reviews": p.get("userRatingCount", ""),
+            })
+        return results, "Found " + str(len(results)) + " verified businesses"
+    except requests.exceptions.Timeout:
+        return [], "Places API timeout"
+    except Exception as e:
+        return [], "Places API error: " + str(e)
+
+# ─────────────────────────────────────────────
+# FIX 7: GEMINI GROUNDED WITH LIVE GOOGLE SEARCH
+# This replaces "ask Gemini to invent companies" with "ask Gemini to search
+# Google first, then answer only from what it found." It uses the SAME
+# Gemini API key you already have — no new account needed. Requires the
+# google-genai package (pip install google-genai / add to requirements.txt).
+# ─────────────────────────────────────────────
+def agent_gemini_scout_grounded(region, target_client, my_product, our_product, num_leads, api_key, seed_places=None):
+    if not GROUNDED_SDK_AVAILABLE:
+        raise Exception("google-genai package not installed. Add 'google-genai' to requirements.txt.")
+
+    seed_block = ""
+    if seed_places:
+        seed_block = (
+            "\nHere are businesses already VERIFIED as real via Google Places — "
+            "prioritise these, enrich them with a decision-maker if you can find one "
+            "via search, and only add further companies you can verify yourself:\n"
+        )
+        for p in seed_places[:num_leads]:
+            seed_block += (
+                "- " + p.get("company", "") + " | " + p.get("address", "") +
+                " | " + p.get("phone", "") + " | " + p.get("website", "") + "\n"
+            )
+
+    prompt = (
+        "Use Google Search to find " + str(num_leads) + " REAL, currently operating "
+        "businesses in " + region + " that could realistically need warehouse space.\n\n"
+        "TARGET CLIENT TYPE: " + target_client + "\n"
+        "WHAT WE SELL: " + my_product + "\n"
+        "OUR FULL OFFERING: " + our_product + "\n"
+        + seed_block +
+        "\nSearch for things like: '" + target_client + " companies in " + region + "', "
+        "'" + target_client + " distributors " + region + " IndiaMART', "
+        "'" + target_client + " " + region + " GST registered company', "
+        "recent news about factories/expansion in " + region + ".\n\n"
+        "Return ONLY a pipe-separated table, no markdown, no preamble, one row per company:\n"
+        "Company Name | Full Address | Manager First Name | Manager Last Name | Phone | "
+        "Decision Maker Role | Why They Need Us | Industry Sector | Estimated Deal Size | Source URL\n\n"
+        "RULES:\n"
+        "- Include ONLY companies you found through search just now — do not use company "
+        "names you merely recall from training\n"
+        "- If you cannot verify a specific person's name, write 'General Enquiry' for both "
+        "name fields and 'Unit Manager' for the role — do NOT invent a name\n"
+        "- Put the exact URL where you found each company in the Source URL column\n"
+        "- Phone: Indian format with +91 if found in search results, else 'Not Found'\n"
+        "- NO invented emails\n"
+    )
+
+    client = ggenai.Client(api_key=api_key.strip())
+    config = ggenai_types.GenerateContentConfig(
+        tools=[ggenai_types.Tool(google_search=ggenai_types.GoogleSearch())]
+    )
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
+        config=config,
+    )
+
+    sources = []
+    try:
+        gm = response.candidates[0].grounding_metadata
+        if gm and gm.grounding_chunks:
+            for chunk in gm.grounding_chunks:
+                if chunk.web:
+                    sources.append({"title": chunk.web.title, "url": chunk.web.uri})
+    except Exception:
+        pass
+
+    return response.text, sources
+
+def parse_leads_table_grounded(raw_text):
+    """Same as parse_leads_table but the last column is a Source URL
+    (proof this came from a real search), not a guessed LinkedIn URL."""
+    leads = []
+    for line in str(raw_text or "").split("\n"):
+        if "|" not in line or "Company" in line or "---" in line:
+            continue
+        cols = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cols) < 8:
+            continue
+        leads.append({
+            "company": cols[0],
+            "address": cols[1],
+            "first_name": cols[2],
+            "last_name": cols[3],
+            "email": "Pending extraction",
+            "phone": cols[4],
+            "decision_maker_role": cols[5] if len(cols) > 5 else "",
+            "why_need": cols[6] if len(cols) > 6 else "",
+            "sector": cols[7] if len(cols) > 7 else "",
+            "deal_size": cols[8] if len(cols) > 8 else "",
+            "person_linkedin": "SEARCH",
+            "source_url": cols[9] if len(cols) > 9 else "",
+        })
+    return leads
+
+def dedupe_leads(new_leads, existing_leads):
+    """FIX 8: Never message the same company twice. Normalises company
+    names and drops anything already present in a previously-downloaded
+    leads CSV the user re-uploads."""
+    def norm(name):
+        return "".join(ch for ch in str(name or "").lower() if ch.isalnum())
+    seen = {norm(l.get("company", "")) for l in existing_leads}
+    fresh, duplicates = [], []
+    for lead in new_leads:
+        key = norm(lead.get("company", ""))
+        if key and key in seen:
+            duplicates.append(lead)
+        else:
+            fresh.append(lead)
+            seen.add(key)
+    return fresh, duplicates
+
 def agent_gemini_strategist(raw_leads_data, our_product, our_company, my_product, reply_tone):
     prompt = (
         "You are a senior B2B growth strategist.\n\n"
@@ -708,6 +902,15 @@ with st.sidebar:
     if not gemini_key:
         gemini_key = st.text_input("Google Gemini Key", type="password", placeholder="AIza...")
 
+    if GROUNDED_SDK_AVAILABLE:
+        st.success("✅ Live Search Grounding ready")
+    else:
+        st.error("⚠️ Install 'google-genai' package to enable live search")
+    if GOOGLE_MAPS_API_KEY:
+        st.success("✅ Google Places (verified businesses) connected")
+    else:
+        st.warning("⚠️ GOOGLE_MAPS_API_KEY missing — add it in secrets for verified business data")
+
     st.markdown("---")
     st.markdown("### 🏭 Our Offering")
     our_product = st.text_area(
@@ -728,6 +931,30 @@ with st.sidebar:
     st.markdown("### ⚙️ Settings")
     auto_reply_enabled = st.toggle("Enable Auto-Reply Simulation", value=True)
     reply_tone = st.selectbox("Reply Tone", ["Professional & Warm", "Formal", "Friendly & Casual", "Urgent & Direct"])
+    use_live_grounding = st.toggle(
+        "🔎 Use Live Search Grounding (recommended)",
+        value=GROUNDED_SDK_AVAILABLE,
+        disabled=not GROUNDED_SDK_AVAILABLE,
+        help="When ON, Gemini must search Google before answering, instead of guessing from memory."
+    )
+    use_places = st.toggle(
+        "📍 Verify with Google Places first",
+        value=bool(GOOGLE_MAPS_API_KEY),
+        disabled=not GOOGLE_MAPS_API_KEY,
+        help="Seeds the search with real, currently-open businesses from Google's live database."
+    )
+
+    st.markdown("---")
+    st.markdown("### 🗂️ Duplicate Check (CRM)")
+    st.caption("Upload a previously downloaded leads CSV — new runs will skip companies already in it.")
+    previous_leads_file = st.file_uploader("Previous leads CSV", type=["csv"], key="prev_leads_upload")
+    previous_leads_records = []
+    if previous_leads_file is not None:
+        try:
+            previous_leads_records = pd.read_csv(previous_leads_file).to_dict("records")
+            st.caption(f"Loaded {len(previous_leads_records)} previous leads for de-duplication.")
+        except Exception as e:
+            st.warning(f"Could not read that CSV: {e}")
 
     st.markdown("---")
     with st.expander("ℹ️ How 5-Agent Pipeline Works"):
@@ -794,9 +1021,31 @@ if run_pipeline:
             show_agent_pipeline({"gemini": "running", "claude": "idle", "gpt": "idle", "auto": "idle", "rag": "idle"})
         with st.spinner("Scout finding leads..."):
             try:
-                raw_leads, model_used = agent_gemini_scout(region, target_client, my_product, our_product, num_leads)
-                st.session_state.pipeline_results["gemini_raw"] = raw_leads
-                st.session_state.leads_data = parse_leads_table(raw_leads)
+                places_results, places_status = [], "Skipped"
+                if use_places and GOOGLE_MAPS_API_KEY:
+                    search_query = target_client + " companies in " + region
+                    places_results, places_status = agent_places_discovery(
+                        search_query, GOOGLE_MAPS_API_KEY, max_results=num_leads)
+                st.session_state.pipeline_results["places_status"] = places_status
+                st.session_state.pipeline_results["places_results"] = places_results
+
+                if use_live_grounding and GROUNDED_SDK_AVAILABLE:
+                    raw_leads, sources = agent_gemini_scout_grounded(
+                        region, target_client, my_product, our_product, num_leads,
+                        gemini_key, seed_places=places_results)
+                    st.session_state.pipeline_results["gemini_raw"] = raw_leads
+                    st.session_state.pipeline_results["scout_sources"] = sources
+                    st.session_state.pipeline_results["scout_mode"] = "grounded"
+                    parsed_leads = parse_leads_table_grounded(raw_leads)
+                else:
+                    raw_leads, model_used = agent_gemini_scout(region, target_client, my_product, our_product, num_leads)
+                    st.session_state.pipeline_results["gemini_raw"] = raw_leads
+                    st.session_state.pipeline_results["scout_mode"] = "ungrounded"
+                    parsed_leads = parse_leads_table(raw_leads)
+
+                fresh_leads, duplicate_leads = dedupe_leads(parsed_leads, previous_leads_records)
+                st.session_state.pipeline_results["duplicates_skipped"] = len(duplicate_leads)
+                st.session_state.leads_data = fresh_leads
             except Exception as e:
                 st.error("Scout Error: " + str(e))
                 st.stop()
@@ -883,6 +1132,32 @@ if "gemini_raw" in st.session_state.pipeline_results:
 
     # PHASE 1 — LEADS TABLE
     show_phase_header("", "&#128269;", "Phase 1: Scout — Lead Discovery", "Real businesses matching your target profile")
+
+    scout_mode = st.session_state.pipeline_results.get("scout_mode", "ungrounded")
+    if scout_mode == "grounded":
+        st.markdown(
+            '<div class="hunter-success">✅ Live Search Grounding was ON — these leads came from a real Google Search, not from memory.</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            '<div class="hunter-fail">⚠️ Live Search Grounding was OFF (or unavailable) — these leads are Gemini\'s best guess from training data and MUST be manually verified before you contact them.</div>',
+            unsafe_allow_html=True,
+        )
+
+    places_status = st.session_state.pipeline_results.get("places_status")
+    if places_status:
+        st.caption("📍 Google Places: " + places_status)
+    dupes_skipped = st.session_state.pipeline_results.get("duplicates_skipped", 0)
+    if dupes_skipped:
+        st.caption("🗂️ Skipped " + str(dupes_skipped) + " companies already in your uploaded leads CSV.")
+
+    scout_sources = st.session_state.pipeline_results.get("scout_sources", [])
+    if scout_sources:
+        with st.expander("🔗 Search sources used for this batch (" + str(len(scout_sources)) + ")"):
+            for src in scout_sources:
+                st.markdown("- [" + esc(src.get("title", src.get("url", ""))) + "](" + src.get("url", "") + ")")
+
     leads_list = st.session_state.leads_data
     if leads_list:
         df_display = pd.DataFrame(leads_list)
@@ -973,7 +1248,9 @@ if "gemini_raw" in st.session_state.pipeline_results:
                 fn = lead_data.get("first_name", f_name)
                 ln = lead_data.get("last_name", l_name)
                 with st.spinner(f"Searching Hunter.io for {fn} {ln} at {company}..."):
-                    found_email, status_msg = get_hunter_email(fn, ln, company)
+                    known_site = lead_data.get("website", "") or lead_data.get("source_url", "")
+                    known_domain = urllib.parse.urlparse(known_site).netloc if known_site.startswith("http") else ""
+                    found_email, status_msg = get_hunter_email(fn, ln, company, known_domain=known_domain)
                     if found_email:
                         st.markdown(f'<div class="hunter-success">✅ Email found: {found_email}<br><small>{status_msg}</small></div>', unsafe_allow_html=True)
                         if idx < len(st.session_state.leads_data):
