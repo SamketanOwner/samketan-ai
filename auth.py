@@ -62,93 +62,14 @@ def log_to_google_sheet(user_info, method):
     except:
         pass
 
-# --- GOOGLE OAUTH HANDLERS ---
-def get_google_auth_url():
-    """Build Google OAuth URL — opens Google login popup with strict path cleaning"""
+# --- GOOGLE SIGN-IN (STREAMLIT NATIVE OIDC) ---
+# Streamlit manages the authorization callback, state, nonce, and ID token.
+# Configure [auth] and [auth.google] in each deployment's private Secrets.
+def google_login_ready():
     try:
-        client_id = st.secrets["google_oauth"]["client_id"]
+        return bool(st.secrets.get("auth", {}).get("google", {}).get("client_id"))
     except Exception:
-        return None
-    
-    # Removes any accidental background trailing slashes to guarantee exact console match
-    clean_redirect_uri = REDIRECT_URI.rstrip('/')
-    
-    params = {
-        "client_id": client_id,
-        "redirect_uri": clean_redirect_uri,
-        "response_type": "code",
-        "scope": "openid email profile",
-        "access_type": "offline",
-        "prompt": "select_account",
-    }
-    return "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
-
-
-def exchange_code_for_user(code):
-    """Exchange authorization code for user profile properties natively via requests"""
-    try:
-        client_id     = st.secrets["google_oauth"]["client_id"]
-        client_secret = st.secrets["google_oauth"]["client_secret"]
-    except Exception as e:
-        return None, f"Secrets error: {e}"
-
-    clean_redirect_uri = REDIRECT_URI.rstrip('/')
-
-    try:
-        token_resp = requests.post("https://oauth2.googleapis.com/token", data={
-            "code": code,
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "redirect_uri": clean_redirect_uri,
-            "grant_type": "authorization_code",
-        }, timeout=10)
-        token_data = token_resp.json()
-    except Exception as network_err:
-        return None, f"Handshake network failure: {network_err}"
-
-    if "error" in token_data:
-        return None, f"Token validation crash: {token_data.get('error_description', token_data['error'])}"
-
-    access_token = token_data.get("access_token")
-    if not access_token:
-        return None, "No active access token block delivered."
-
-    try:
-        user_resp = requests.get("https://www.googleapis.com/oauth2/v2/userinfo",
-                                 headers={"Authorization": f"Bearer {access_token}"}, timeout=10)
-        user_data = user_resp.json()
-    except Exception as info_err:
-        return None, f"User parsing target missing: {info_err}"
-
-    email = user_data.get("email")
-    name  = user_data.get("name", email)
-
-    if not email:
-        return None, "Google verification payload lacked an explicit email identity reference."
-
-    return {"email": email, "name": name}, None
-
-
-def handle_google_callback():
-    """Verify context paths to trap active OAuth redirects landing inside URL layers"""
-    params = st.query_params
-    code = params.get("code")
-    if not code:
         return False
-
-    # Exchange token variables FIRST before wiping active parameter layout records
-    user_info, error = exchange_code_for_user(code)
-    st.query_params.clear()
-
-    if error:
-        st.session_state["google_error"] = error
-        return False
-
-    log_to_google_sheet(user_info["email"], "Google OAuth")
-    st.session_state.authenticated = True
-    st.session_state.current_user  = user_info["email"]
-    st.session_state.display_name  = user_info["name"]
-    return True
 
 
 # --- CSS + LEFT PANEL LAYOUT ---
@@ -238,19 +159,16 @@ def inject_css(logo_b64=None):
 
 # --- MAIN LOGIN INTERFACE ---
 def login_screen():
-    st.set_page_config(
-        page_title="Samketan AI — Secure Access",
-        page_icon="🔐",
-        layout="wide",
-        initial_sidebar_state="collapsed"
-    )
-
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 
     # ── Handle background Google OAuth redirect loop data mapping ──
-    if handle_google_callback():
-        st.rerun()
+    if st.user.is_logged_in:
+        email = st.user.get("email")
+        if email and st.user.get("email_verified", False):
+            st.session_state.authenticated = True
+            st.session_state.current_user = email
+            st.session_state.display_name = st.user.get("name", email)
 
     if st.session_state.authenticated:
         return True
@@ -287,32 +205,13 @@ def login_screen():
                 st.error(f"Google Sign-In failed: {st.session_state.google_error}")
                 st.session_state.pop("google_error", None)
 
-            auth_url = get_google_auth_url()
+            auth_ready = google_login_ready()
 
-            if auth_url:
-                st.markdown(f"""
-                <a href="{auth_url}" target="_self" style="
-                    display:flex;align-items:center;justify-content:center;
-                    gap:8px; background:#fff; border:1px solid #dadce0;
-                    border-radius:9px; padding:11px 16px; text-decoration:none;
-                    font-family:'DM Sans',sans-serif; font-size:14px;
-                    font-weight:500; color:#3c4043; margin-bottom:4px;
-                    box-shadow:0 1px 3px rgba(0,0,0,0.08); transition:box-shadow 0.2s;
-                ">
-                  {google_icon}
-                  Continue with Google
-                </a>
-                """, unsafe_allow_html=True)
+            if auth_ready:
+                if st.button("Continue with Google", key="google_native_login"):
+                    st.login("google")
             else:
-                st.markdown(f"""
-                <div style="display:flex;align-items:center;justify-content:center;gap:8px;
-                    background:#f5f5f5;border:1px solid #dadce0;border-radius:9px;
-                    padding:11px 16px;color:#9aa0ae;font-size:14px;font-family:'DM Sans',sans-serif;
-                    margin-bottom:4px;">
-                  {google_icon} Continue with Google
-                  <span style="margin-left:auto;font-size:10px;color:#bbb;">Configuration Setup Needed</span>
-                </div>
-                """, unsafe_allow_html=True)
+                st.info("Google sign-in requires the [auth] and [auth.google] Secrets configuration. Email OTP remains available.")
 
             # ⚙️ FIXED: INNER HTML FALLBACK NOTICE INJECTED DIRECTLY UNDER THE GOOGLE INTERFACE
             st.markdown("""
