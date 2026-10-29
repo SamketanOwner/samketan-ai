@@ -11,8 +11,8 @@ from urllib.parse import urlencode
 
 # --- CONFIGURATION ---
 SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxxkHAi7kn24BChb4zQktRE-u4kPY-sn9L96FLIqw4-czxzms03iCP1eNnPUGrAB_5HxA/exec"
-GMAIL_USER = "shgarampalli@gmail.com"
-GMAIL_PASS = "hbikssxqyzthscne"
+GMAIL_USER = st.secrets.get("GMAIL_USER", "")
+GMAIL_PASS = st.secrets.get("GMAIL_APP_PASSWORD", "")
 
 # Dynamically reads your exact custom callback string from your Streamlit secrets dashboard
 REDIRECT_URI = st.secrets["google_oauth"]["redirect_uri"]
