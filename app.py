@@ -10,6 +10,7 @@ import pandas as pd
 import streamlit as st
 import requests
 import socket
+from samketan_intelligence.business_dna import make_profile
 
 # NEW: the unified google-genai SDK is required for real "Grounding with
 # Google Search" — this is what actually lets Gemini search the live web
@@ -959,12 +960,44 @@ with st.sidebar:
 # ---------------------------------------------
 st.markdown('<div class="input-card">', unsafe_allow_html=True)
 st.markdown("### 🎯 Define Your Target")
+st.markdown("### 🧬 Business DNA — Industry Research Profile")
+dna_choice = st.selectbox(
+    "Choose a research profile",
+    ["Custom (existing settings)", "Warehouse leasing", "Pulses manufacturing"],
+    key="business_dna_choice",
+    help="Profiles suggest research targets; they do not verify that a company needs your offering.",
+)
+dna_key = {
+    "Warehouse leasing": "warehouse_leasing",
+    "Pulses manufacturing": "pulses_manufacturing",
+}.get(dna_choice)
+if dna_key:
+    dna_region = st.text_input(
+        "Profile research region(s), comma-separated",
+        value="Kalaburagi" if dna_key == "warehouse_leasing" else "Karnataka",
+        key=f"dna_regions_{dna_key}",
+    )
+    dna_regions = tuple(x.strip() for x in dna_region.split(",") if x.strip())
+    if not dna_regions:
+        st.warning("Enter at least one research region to use this profile.")
+    else:
+        dna_profile = make_profile(dna_key, dna_regions)
+        st.caption("Suggested buyer roles: " + ", ".join(dna_profile.buyer_types))
+        with st.expander("Preview suggested research queries"):
+            for query in dna_profile.research_queries():
+                st.write("• " + query)
+        if st.button("Apply profile to existing search fields", key="dna_apply_profile"):
+            st.session_state["target_product_input"] = dna_profile.offering
+            st.session_state["target_region_input"] = ", ".join(dna_profile.target_regions)
+            st.session_state["target_client_input"] = ", ".join(dna_profile.buyer_types)
+            st.rerun()
+st.caption("Profiles are optional. You can edit all target fields before launching the existing pipeline.")
 col1, col2, col3 = st.columns(3)
 with col1:
-    my_product = st.text_input("Product / Service to Sell", value="Warehouse Space")
-    region = st.text_input("Target City / Region", value="Gulbarga, Karnataka")
+    my_product = st.text_input("Product / Service to Sell", value="Warehouse Space", key="target_product_input")
+    region = st.text_input("Target City / Region", value="Gulbarga, Karnataka", key="target_region_input")
 with col2:
-    target_client = st.text_input("Ideal Client Type", value="FMCG Distributors, Pharma Companies")
+    target_client = st.text_input("Ideal Client Type", value="FMCG Distributors, Pharma Companies", key="target_client_input")
     num_leads = st.slider("Number of Leads", 3, 10, 5)
 with col3:
     scope = st.radio("Market Scope", ["Local (Domestic)", "Export (International)"])
