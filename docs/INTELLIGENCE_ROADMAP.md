@@ -13,14 +13,14 @@ Do not copy proprietary source, visual design, names, or paid provider datasets.
 - [x] Remove automatic sign-in when `auth` import fails.
 - [x] Remove implicit sign-in based solely on a browser cookie.
 - [ ] Review OTP rate limits, expiration, session lifecycle and logout.
-- [ ] Add integration tests for the Streamlit login flow.
+- [ ] Add integration tests for the Streamlit login flow and OTP expiry/attempt limits.
 
 ## Phase 2: original provider-neutral gateway
 - [x] Define typed evidence and candidate records, injectable providers and limits.
 - [ ] Adapter for an approved search provider (do not scrape restricted services).
 - [ ] Add per-provider API budgets, timeout controls and retry ceilings.
 - [ ] Store records and source provenance in durable storage.
-- [ ] Connect the gateway to the existing Streamlit application after validation.
+- [ ] Connect the gateway to the existing Streamlit application after validation.\n- [x] Add Business DNA profiles for warehouse leasing and pulses manufacturing.\n- [x] Add a GitHub Actions unit-test workflow (execution pending).
 
 ## Phase 3: quality and compliance
 - [ ] Separate company prospects, verified requirement signals and contacted leads.
