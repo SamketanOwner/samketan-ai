@@ -36,16 +36,7 @@ except Exception:
         CookieManager = _MemoryCookieManager
     stx = _FallbackStreamlitComponents()
 
-try:
-    import auth
-except ImportError:
-    class _FallbackAuth:
-        @staticmethod
-        def login_screen():
-            st.session_state.authenticated = True
-            st.session_state.current_user = st.session_state.get("current_user", "User")
-            return True
-    auth = _FallbackAuth()
+import auth  # Fail closed if authentication is unavailable; never silently grant access.
 
 # ---------------------------------------------
 # PAGE CONFIG
@@ -60,11 +51,8 @@ st.set_page_config(
 # AUTHENTICATION
 # ---------------------------------------------
 cookie_manager = stx.CookieManager()
-saved_user = cookie_manager.get("samketan_user")
-if saved_user and not st.session_state.get("authenticated"):
-    st.session_state.authenticated = True
-    st.session_state.current_user = saved_user
-
+# A client-side cookie is not proof of authentication. Only the login module
+# can establish an authenticated Streamlit session.
 if not auth.login_screen():
     st.stop()
 
